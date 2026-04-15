@@ -230,6 +230,34 @@ input, textarea, select {
     border-radius: 8px !important;
     color: var(--secondary) !important;
     font-weight: 500 !important;
+    overflow: visible !important;
+}
+
+/* Corrige tags/chips do multiselect cortadas nas bordas */
+[data-testid="stMultiSelect"] div[data-baseweb="select"] > div {
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+    padding: 4px 6px !important;
+}
+
+[data-testid="stMultiSelect"] [data-baseweb="tag"] {
+    background-color: var(--primary) !important;
+    border-radius: 6px !important;
+    margin: 2px !important;
+    max-width: calc(100% - 8px) !important;
+    overflow: visible !important;
+}
+
+[data-testid="stMultiSelect"] [data-baseweb="tag"] span {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+}
+
+[data-testid="stMultiSelect"] [data-baseweb="tag"] [role="presentation"] {
+    color: #ffffff !important;
 }
 
 /* ========== ALERTS & MESSAGES ========== */
