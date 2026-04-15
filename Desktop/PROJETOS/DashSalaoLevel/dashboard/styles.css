@@ -1,7 +1,190 @@
 /* ============================================
-   DESIGN SYSTEM - LEVEL SALÃO v3.0
-   Paleta alinhada à marca Level Salão
+   DESIGN SYSTEM - LEVEL SALÃO v4.0
+   Tema controlado via .streamlit/config.toml (light mode)
+   CSS cuida apenas de tipografia, cards e ajustes visuais finos
    ============================================ */
+
+/* ====== FONTES — alinhadas à landing page ====== */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary:    #4A3728;
+    --gold:       #D4A373;
+    --gold-dark:  #C89860;
+    --accent-bg:  #F1E9E0;
+    --border:     rgba(74, 55, 40, 0.15);
+}
+
+/* ====== TIPOGRAFIA ====== */
+* {
+    font-family: 'Montserrat', 'Arial', sans-serif !important;
+}
+
+h1, h2 {
+    font-family: 'Playfair Display', serif !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+}
+
+h1 { font-size: 2.2rem !important; }
+h2 { font-size: 1.6rem !important; }
+
+h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* ====== LAYOUT ====== */
+.block-container {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+    max-width: 1400px !important;
+}
+
+/* ====== HIDE STREAMLIT CHROME ====== */
+#MainMenu, footer { visibility: hidden; }
+
+/* ====== DIVIDERS ====== */
+hr {
+    border: none !important;
+    height: 1px !important;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent) !important;
+    margin: 20px 0 !important;
+    opacity: 0.6;
+}
+
+/* ====== METRICS / KPI CARDS ====== */
+[data-testid="metric-container"] {
+    background: #ffffff !important;
+    border: 1.5px solid var(--border) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 16px rgba(74, 55, 40, 0.07) !important;
+    padding: 16px 20px !important;
+}
+
+[data-testid="metric-container"] [data-testid="metric-label"] {
+    font-size: 11px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.8px !important;
+    font-weight: 700 !important;
+    opacity: 0.7;
+}
+
+[data-testid="metric-container"] [data-testid="metric-value"] {
+    font-size: 26px !important;
+    font-weight: 700 !important;
+}
+
+/* ====== TABS ====== */
+[data-testid="stTabs"] [role="tablist"] {
+    gap: 8px !important;
+}
+
+[data-testid="stTabs"] button[role="tab"] {
+    font-weight: 600 !important;
+    border-radius: 10px 10px 0 0 !important;
+    padding: 10px 16px !important;
+}
+
+[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    font-weight: 700 !important;
+}
+
+/* ====== CONTAINERS COM BORDA ====== */
+[data-testid="stContainer"][border] {
+    border: 1.5px solid var(--border) !important;
+    border-radius: 16px !important;
+    background: #ffffff !important;
+    padding: 20px !important;
+    box-shadow: 0 4px 16px rgba(74, 55, 40, 0.05) !important;
+}
+
+/* ====== MULTISELECT — TAGS ====== */
+[data-testid="stMultiSelect"] [data-baseweb="tag"] {
+    background-color: var(--primary) !important;
+    border-radius: 6px !important;
+    border: none !important;
+}
+
+/* Oculta o ícone/quadrado inicial da tag (StartEnhancer do base-web) */
+[data-testid="stMultiSelect"] [data-baseweb="tag"] [data-testid="stIconMaterial"],
+[data-testid="stMultiSelect"] [data-baseweb="tag"] > span:first-of-type:empty {
+    display: none !important;
+}
+
+/* Texto dentro da tag */
+[data-testid="stMultiSelect"] [data-baseweb="tag"] span {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+}
+
+/* Botão × dentro da tag */
+[data-testid="stMultiSelect"] [data-baseweb="tag"] [role="presentation"] {
+    color: rgba(255,255,255,0.8) !important;
+}
+
+/* ====== BOTÕES DE AÇÃO ====== */
+[data-testid="stButton"] > button,
+[data-testid="stFormSubmitButton"] > button {
+    background-color: var(--primary) !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-radius: 8px !important;
+}
+
+[data-testid="stButton"] > button:hover,
+[data-testid="stFormSubmitButton"] > button:hover {
+    background-color: var(--gold-dark) !important;
+    color: #ffffff !important;
+}
+
+/* ====== TABELAS ====== */
+[data-testid="stDataFrame"] thead,
+[data-testid="stDataFrame"] th {
+    background-color: var(--accent-bg) !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+[data-testid="stDataFrame"] tbody tr:hover {
+    background-color: rgba(212, 163, 115, 0.08) !important;
+}
+
+/* ====== HERO PANEL ====== */
+.hero-panel {
+    background: linear-gradient(135deg, var(--primary) 0%, #6b4f3a 100%);
+    border-radius: 20px;
+    padding: 24px 28px;
+    box-shadow: 0 12px 40px rgba(74, 55, 40, 0.18);
+}
+
+.hero-panel h1,
+.hero-panel h2,
+.hero-panel h3,
+.hero-panel p,
+.hero-panel span {
+    color: #ffffff !important;
+}
+
+/* ====== ALERTS ====== */
+[data-testid="stAlert"] {
+    border-radius: 10px !important;
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 768px) {
+    h1 { font-size: 1.6rem !important; }
+    h2 { font-size: 1.3rem !important; }
+    [data-testid="metric-container"] [data-testid="metric-value"] {
+        font-size: 20px !important;
+    }
+}
+
 
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
 
