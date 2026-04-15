@@ -301,51 +301,24 @@ def calcular_kpis(df):
 
 
 def criar_filtros(df, periodos_list, chave_unica):
-    """
-    Cria filtros reutilizáveis para período e canais
-    Evita duplicação de código entre abas
-    
-    Args:
-        df (pd.DataFrame): DataFrame com dados
-        periodos_list (list): Lista de períodos disponíveis
-        chave_unica (str): Identificador único para o widget
-    
-    Returns:
-        tuple: (meses_selecionados, canais_selecionados)
-    """
+    """Filtros de período e canal. Default: todos os períodos disponíveis."""
     col_f1, col_f2 = st.columns([1, 2])
-
-    # Default: nov/2025 até hoje
-    # Gera o conjunto de labels esperados por comparação de string para evitar
-    # erros de tipo quando Periodo_Order não é pd.Period
-    import datetime as _dt
-    corte = pd.Period('2025-11', 'M')
-    hoje = pd.Period(_dt.date.today(), 'M')
-    labels_no_range: set = set()
-    _p = corte
-    while _p <= hoje:
-        labels_no_range.add(_p.to_timestamp().strftime('%b/%y'))
-        _p = _p + 1
-
-    labels_default = [l for l in periodos_list if l in labels_no_range]
-    if not labels_default:
-        labels_default = periodos_list[-1:]
 
     meses_sel = col_f1.multiselect(
         "Filtrar Período",
-        periodos_list,
-        default=labels_default,
-        key=f"periodo_{chave_unica}"
+        options=periodos_list,
+        default=periodos_list,
+        key=f"periodo_{chave_unica}",
     )
-    
-    canais_disponiveis = sorted(df['Origem'].unique())
+
+    canais_disponiveis = sorted(df["Origem"].dropna().unique().tolist())
     canais_sel = col_f2.multiselect(
         "Canais de Origem",
-        canais_disponiveis,
+        options=canais_disponiveis,
         default=canais_disponiveis,
-        key=f"canais_{chave_unica}"
+        key=f"canais_{chave_unica}",
     )
-    
+
     return meses_sel, canais_sel
 
 

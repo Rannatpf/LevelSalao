@@ -1,149 +1,75 @@
-/* ============================================
-   DESIGN SYSTEM - LEVEL SALÃO v4.0
-   Tema controlado via .streamlit/config.toml (light mode)
-   CSS cuida apenas de tipografia, cards e ajustes visuais finos
-   ============================================ */
+/* LEVEL SALÃO — Dashboard CSS v5 (limpo) */
 
-/* ====== FONTES — alinhadas à landing page ====== */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@400;500;600;700&display=swap');
 
 :root {
-    --primary:    #4A3728;
-    --gold:       #D4A373;
-    --gold-dark:  #C89860;
-    --accent-bg:  #F1E9E0;
-    --border:     rgba(74, 55, 40, 0.15);
+    --primary:   #4A3728;
+    --gold:      #D4A373;
+    --gold-dark: #C89860;
+    --accent-bg: #F1E9E0;
+    --border:    rgba(74, 55, 40, 0.15);
 }
 
-/* ====== TIPOGRAFIA ====== */
-* {
-    font-family: 'Montserrat', 'Arial', sans-serif !important;
-}
+/* ---- TIPOGRAFIA ---- */
+* { font-family: 'Montserrat', Arial, sans-serif !important; }
 
 h1, h2 {
     font-family: 'Playfair Display', serif !important;
     font-weight: 700 !important;
-    letter-spacing: -0.01em !important;
 }
-
 h1 { font-size: 2.2rem !important; }
 h2 { font-size: 1.6rem !important; }
+h3, h4, h5, h6 { font-weight: 700 !important; }
 
-h3, h4, h5, h6 {
-    font-family: 'Montserrat', sans-serif !important;
-    font-weight: 700 !important;
-    letter-spacing: -0.01em !important;
-}
-
-/* ====== LAYOUT ====== */
-.block-container {
-    padding-top: 2rem !important;
-    padding-bottom: 2rem !important;
-    max-width: 1400px !important;
-}
-
-/* ====== HIDE STREAMLIT CHROME ====== */
+/* ---- LAYOUT ---- */
+.block-container { padding-top: 2rem !important; max-width: 1400px !important; }
 #MainMenu, footer { visibility: hidden; }
 
-/* ====== DIVIDERS ====== */
+/* ---- DIVISOR ---- */
 hr {
     border: none !important;
     height: 1px !important;
     background: linear-gradient(90deg, transparent, var(--gold), transparent) !important;
-    margin: 20px 0 !important;
-    opacity: 0.6;
+    margin: 16px 0 !important;
 }
 
-/* ====== METRICS / KPI CARDS ====== */
+/* ---- KPI CARDS ---- */
 [data-testid="metric-container"] {
     background: #ffffff !important;
     border: 1.5px solid var(--border) !important;
     border-radius: 16px !important;
-    box-shadow: 0 4px 16px rgba(74, 55, 40, 0.07) !important;
+    box-shadow: 0 4px 16px rgba(74,55,40,0.07) !important;
     padding: 16px 20px !important;
 }
-
 [data-testid="metric-container"] [data-testid="metric-label"] {
     font-size: 11px !important;
     text-transform: uppercase !important;
     letter-spacing: 0.8px !important;
     font-weight: 700 !important;
-    opacity: 0.7;
 }
-
 [data-testid="metric-container"] [data-testid="metric-value"] {
     font-size: 26px !important;
     font-weight: 700 !important;
 }
 
-/* ====== TABS ====== */
-[data-testid="stTabs"] [role="tablist"] {
-    gap: 8px !important;
-}
-
+/* ---- TABS ---- */
 [data-testid="stTabs"] button[role="tab"] {
     font-weight: 600 !important;
     border-radius: 10px 10px 0 0 !important;
-    padding: 10px 16px !important;
 }
-
 [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
     font-weight: 700 !important;
 }
 
-/* ====== CONTAINERS COM BORDA ====== */
+/* ---- CONTAINERS COM BORDA ---- */
 [data-testid="stContainer"][border] {
     border: 1.5px solid var(--border) !important;
     border-radius: 16px !important;
     background: #ffffff !important;
     padding: 20px !important;
-    box-shadow: 0 4px 16px rgba(74, 55, 40, 0.05) !important;
 }
 
-/* ====== MULTISELECT — TAGS ====== */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] {
-    background-color: var(--primary) !important;
-    border-radius: 6px !important;
-    border: none !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    padding: 2px 6px 2px 4px !important;
-    overflow: visible !important;
-    max-width: none !important;
-    height: auto !important;
-}
-
-/*
-  Colapsa o StartEnhancer (primeiro filho do tag no base-web).
-  Não usa :empty porque o span pode conter um SVG; usa width:0 para ser seguro.
-*/
-[data-testid="stMultiSelect"] [data-baseweb="tag"] > span:first-child {
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: hidden !important;
-    flex-shrink: 0 !important;
-}
-
-/* Texto do label da tag (segundo filho) */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] > span:nth-child(2) {
-    color: #ffffff !important;
-    font-weight: 600 !important;
-    font-size: 13px !important;
-    white-space: nowrap !important;
-    overflow: visible !important;
-    flex: 0 0 auto !important;
-}
-
-/* Botão × dentro da tag */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] > span[role="presentation"] {
-    color: rgba(255,255,255,0.8) !important;
-    flex-shrink: 0 !important;
-}
-
-/* ====== BOTÕES DE AÇÃO ====== */
+/* ---- BOTOES ---- */
 [data-testid="stButton"] > button,
 [data-testid="stFormSubmitButton"] > button {
     background-color: var(--primary) !important;
@@ -152,462 +78,30 @@ hr {
     border: none !important;
     border-radius: 8px !important;
 }
-
-[data-testid="stButton"] > button:hover,
-[data-testid="stFormSubmitButton"] > button:hover {
+[data-testid="stButton"] > button:hover {
     background-color: var(--gold-dark) !important;
-    color: #ffffff !important;
 }
 
-/* ====== TABELAS ====== */
+/* ---- TABELAS ---- */
 [data-testid="stDataFrame"] thead,
 [data-testid="stDataFrame"] th {
     background-color: var(--accent-bg) !important;
     font-size: 12px !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
-    letter-spacing: 0.5px !important;
 }
 
-[data-testid="stDataFrame"] tbody tr:hover {
-    background-color: rgba(212, 163, 115, 0.08) !important;
-}
-
-/* ====== HERO PANEL ====== */
+/* ---- HERO PANEL ---- */
 .hero-panel {
     background: linear-gradient(135deg, var(--primary) 0%, #6b4f3a 100%);
     border-radius: 20px;
     padding: 24px 28px;
-    box-shadow: 0 12px 40px rgba(74, 55, 40, 0.18);
 }
+.hero-panel h1, .hero-panel h2, .hero-panel h3,
+.hero-panel p, .hero-panel span { color: #ffffff !important; }
 
-.hero-panel h1,
-.hero-panel h2,
-.hero-panel h3,
-.hero-panel p,
-.hero-panel span {
-    color: #ffffff !important;
-}
-
-/* ====== ALERTS ====== */
-[data-testid="stAlert"] {
-    border-radius: 10px !important;
-}
-
-/* ====== RESPONSIVE ====== */
+/* ---- RESPONSIVE ---- */
 @media (max-width: 768px) {
     h1 { font-size: 1.6rem !important; }
     h2 { font-size: 1.3rem !important; }
-    [data-testid="metric-container"] [data-testid="metric-value"] {
-        font-size: 20px !important;
-    }
-}
-
-
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
-
-/* ========== VARIÁVEIS GLOBAIS ========== */
-:root {
-    --primary:       #4A3728;   /* marrom escuro — cor da marca          */
-    --secondary:     #D4A373;   /* dourado/bege sofisticado               */
-    --secondary-dark:#C89860;   /* dourado mais escuro (hover)            */
-    --accent:        #F1E9E0;   /* fundo claro / superfície               */
-    --text-dark:     #2B2B2B;   /* texto principal — alto contraste       */
-    --text-light:    #6B6B6B;   /* texto secundário / captions            */
-    --white:         #FFFFFF;
-    --neutral:       #E8E3DB;
-    --bg-top:        #f8f4ee;
-    --bg-bottom:     #efe7dc;
-    --border-soft:   rgba(74, 55, 40, 0.14);
-    --surface:       rgba(255, 255, 255, 0.92);
-}
-
-/* ========== TIPOGRAFIA GLOBAL ========== */
-* { 
-    font-family: 'Montserrat', sans-serif !important;
-}
-
-/* ========== FUNDO E ESTRUTURA ========== */
-.stApp {
-    background:
-        radial-gradient(circle at top left, rgba(212, 163, 115, 0.20), transparent 28%),
-        radial-gradient(circle at top right, rgba(74, 55, 40, 0.10), transparent 24%),
-        linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%) !important;
-}
-
-.block-container {
-    padding-top: 2rem !important;
-    padding-bottom: 2rem !important;
-    max-width: 1400px !important;
-}
-
-/* ========== TÍTULO E SUBTÍTULO ========== */
-h1, h2, h3, h4, h5, h6 {
-    letter-spacing: -0.02em !important;
-}
-
-/* ========== HEADINGS (Alto Contraste) ========== */
-h1 { 
-    color: var(--primary) !important; 
-    font-weight: 700 !important;
-    font-size: 2.5rem !important;
-    margin-bottom: 1rem !important;
-}
-
-h2 { 
-    color: var(--primary) !important; 
-    font-weight: 700 !important;
-    font-size: 1.8rem !important;
-    margin-bottom: 0.8rem !important;
-}
-
-h3 { 
-    color: var(--text-dark) !important; 
-    font-weight: 600 !important;
-    font-size: 1.3rem !important;
-}
-
-h4, h5, h6 { 
-    color: var(--primary) !important;
-    font-weight: 600 !important;
-}
-
-/* ========== TEXTO GERAL ========== */
-/* Escopo restrito ao conteúdo Markdown para não sobrescrever
-   texto branco de hero-panel, gráficos Plotly e internos Streamlit */
-.stMarkdown p,
-.stMarkdown li,
-.stMarkdown blockquote {
-    color: var(--text-dark) !important;
-}
-
-/* Labels e captions do Streamlit */
-[data-testid="stWidgetLabel"] p,
-label {
-    color: var(--text-dark) !important;
-    font-weight: 600 !important;
-}
-
-/* ========== METRICS (KPI Cards) ========== */
-[data-testid="metric-container"] {
-    background: linear-gradient(135deg, var(--white) 0%, #faf7f3 100%) !important;
-    border: 1.5px solid var(--border-soft) !important;
-    border-radius: 18px !important;
-    box-shadow: 0 10px 30px rgba(74, 55, 40, 0.08) !important;
-    padding: 18px 20px !important;
-    backdrop-filter: blur(8px);
-}
-
-[data-testid="metric-container"] [data-testid="metric-label"] {
-    color: var(--text-light) !important;
-    font-weight: 700 !important;
-    font-size: 12px !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.6px !important;
-}
-
-[data-testid="metric-container"] [data-testid="metric-value"] {
-    color: var(--text-dark) !important;
-    font-weight: 700 !important;
-    font-size: 26px !important;
-}
-
-[data-testid="metric-container"] [data-testid="metric-delta"] {
-    font-weight: 600 !important;
-}
-
-/* ========== TABS ========== */
-[data-testid="stTabs"] [role="tablist"] {
-    border-bottom: 1px solid var(--border-soft) !important;
-    gap: 14px !important;
-    padding-bottom: 6px !important;
-}
-
-[data-testid="stTabs"] button[role="tab"] {
-    color: var(--text-light) !important;
-    font-weight: 600 !important;
-    border: 1px solid transparent !important;
-    border-bottom: 3px solid transparent !important;
-    padding: 11px 16px !important;
-    background-color: transparent !important;
-    border-radius: 12px 12px 0 0 !important;
-}
-
-[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-    color: var(--primary) !important;
-    border-color: var(--secondary) !important;
-    font-weight: 700 !important;
-    background: rgba(255,255,255,0.72) !important;
-}
-
-/* ========== DIVIDERS ========== */
-hr {
-    border: none !important;
-    height: 2px !important;
-    background: linear-gradient(90deg, transparent, var(--secondary), transparent) !important;
-    margin: 24px 0 !important;
-}
-
-/* ========== CONTAINERS COM BORDER ========== */
-[data-testid="stContainer"][border] {
-    border: 1.5px solid var(--border-soft) !important;
-    border-radius: 18px !important;
-    background: linear-gradient(135deg, var(--white) 0%, #faf7f3 100%) !important;
-    padding: 20px !important;
-    box-shadow: 0 10px 30px rgba(74, 55, 40, 0.05) !important;
-}
-
-/* ========== HERO / INSIGHTS ========== */
-.hero-panel {
-    background: linear-gradient(135deg, rgba(45, 30, 18, 0.94), rgba(74, 55, 40, 0.88));
-    color: #fff !important;
-    border-radius: 24px;
-    padding: 24px 28px;
-    box-shadow: 0 18px 50px rgba(45, 30, 18, 0.18);
-}
-
-.hero-panel h1,
-.hero-panel h2,
-.hero-panel h3,
-.hero-panel p,
-.hero-panel span {
-    color: #fff !important;
-}
-
-.insight-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 999px;
-    background: rgba(212, 163, 115, 0.14);
-    border: 1px solid rgba(212, 163, 115, 0.22);
-    color: var(--secondary) !important;
-    font-weight: 700;
-    margin-right: 8px;
-    margin-bottom: 8px;
-}
-
-.section-card {
-    background: var(--surface-strong);
-    border: 1px solid var(--border-soft);
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 14px 38px rgba(45, 30, 18, 0.05);
-}
-
-/* ========== TABELAS ========== */
-[data-testid="stDataFrame"] {
-    background-color: var(--white) !important;
-}
-
-[data-testid="stDataFrame"] table {
-    border-collapse: collapse !important;
-}
-
-[data-testid="stDataFrame"] thead {
-    background-color: var(--accent) !important;
-    border-bottom: 2px solid var(--secondary) !important;
-}
-
-[data-testid="stDataFrame"] th {
-    color: var(--primary) !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    font-size: 12px !important;
-    letter-spacing: 0.5px !important;
-    padding: 12px 8px !important;
-    background-color: var(--accent) !important;
-}
-
-[data-testid="stDataFrame"] tbody tr {
-    border-bottom: 1px solid var(--neutral) !important;
-}
-
-[data-testid="stDataFrame"] tbody tr:hover {
-    background-color: rgba(212, 163, 115, 0.08) !important;
-}
-
-[data-testid="stDataFrame"] td {
-    color: var(--text-dark) !important;
-    padding: 12px 8px !important;
-}
-
-/* ========== INPUTS & SELECTS ========== */
-
-/* Container geral do multiselect e selectbox */
-[data-testid="stMultiSelect"] [data-baseweb="select"],
-[data-testid="stSelectbox"] [data-baseweb="select"] {
-    background-color: var(--white) !important;
-    border: 1.5px solid var(--border-soft) !important;
-    border-radius: 8px !important;
-}
-
-/* Div interna que base-web renderiza com fundo escuro */
-[data-testid="stMultiSelect"] [data-baseweb="select"] > div,
-[data-testid="stSelectbox"] [data-baseweb="select"] > div {
-    background-color: var(--white) !important;
-    border: none !important;
-    border-radius: 8px !important;
-    flex-wrap: wrap !important;
-    padding: 4px 6px !important;
-}
-
-/* Input interno */
-[data-testid="stMultiSelect"] input,
-[data-testid="stSelectbox"] input {
-    background-color: transparent !important;
-    color: var(--text-dark) !important;
-}
-
-/* Tags / chips selecionados */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] {
-    background-color: var(--primary) !important;
-    border-radius: 6px !important;
-    margin: 2px 3px !important;
-    border: none !important;
-}
-
-/* Quadrado/ícone branco antes do texto da tag — ocultar */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] > span:first-child,
-[data-testid="stMultiSelect"] [data-baseweb="tag"] svg {
-    display: none !important;
-}
-
-/* Texto da tag */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] span {
-    color: var(--white) !important;
-    font-weight: 600 !important;
-    font-size: 13px !important;
-    white-space: nowrap !important;
-}
-
-/* Botão × de remover tag */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] [role="presentation"] {
-    color: var(--accent) !important;
-    opacity: 0.85;
-}
-
-/* Dropdown aberto (popover / listbox) */
-[data-baseweb="popover"],
-[data-baseweb="menu"],
-[role="listbox"] {
-    background-color: var(--white) !important;
-    border: 1.5px solid var(--border-soft) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 8px 24px rgba(74,55,40,0.12) !important;
-}
-
-/* Opções do dropdown */
-[role="option"] {
-    background-color: var(--white) !important;
-    color: var(--text-dark) !important;
-}
-
-[role="option"]:hover,
-[role="option"][aria-selected="true"] {
-    background-color: var(--accent) !important;
-    color: var(--primary) !important;
-    font-weight: 600 !important;
-}
-
-/* Inputs de texto e textarea genéricos */
-input:not([type="checkbox"]):not([type="radio"]),
-textarea,
-select {
-    background-color: var(--white) !important;
-    border: 1.5px solid var(--border-soft) !important;
-    border-radius: 8px !important;
-    color: var(--text-dark) !important;
-    font-weight: 500 !important;
-}
-
-/* ========== ALERTS & MESSAGES ========== */
-[data-testid="stAlert"] {
-    border-radius: 8px !important;
-    padding: 16px !important;
-}
-
-[data-testid="stAlert"] > div {
-    color: var(--text-dark) !important;
-    font-weight: 500 !important;
-}
-
-/* ========== CAPTIONS & SMALL TEXT ========== */
-[data-testid="stCaption"],
-[data-testid="stCaption"] p {
-    color: var(--text-light) !important;
-    font-weight: 500 !important;
-}
-
-/* ========== BUTTONS ========== */
-[data-testid="stButton"] > button,
-[data-testid="stFormSubmitButton"] > button {
-    background-color: var(--primary) !important;
-    color: var(--white) !important;
-    font-weight: 600 !important;
-    border: none !important;
-    border-radius: 8px !important;
-    padding: 10px 20px !important;
-}
-
-[data-testid="stButton"] > button:hover,
-[data-testid="stFormSubmitButton"] > button:hover {
-    background-color: var(--secondary) !important;
-    color: var(--white) !important;
-    box-shadow: 0 4px 12px rgba(212, 163, 115, 0.35) !important;
-}
-
-/* ========== STREAMLIT CHROME ========== */
-#MainMenu {
-    visibility: hidden;
-}
-
-footer {
-    visibility: hidden;
-}
-
-/* ========== SUBHEADERS ========== */
-.stSubheader {
-    color: var(--primary) !important;
-    font-weight: 700 !important;
-    border-bottom: 2px solid var(--secondary) !important;
-    padding-bottom: 8px !important;
-    margin-bottom: 16px !important;
-}
-
-/* ========== INSIGHT CHIPS ========== */
-.insight-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 999px;
-    background: rgba(212, 163, 115, 0.14);
-    border: 1px solid rgba(212, 163, 115, 0.30);
-    color: var(--primary) !important;
-    font-weight: 700;
-    margin-right: 8px;
-    margin-bottom: 8px;
-}
-
-.section-card {
-    background: var(--white);
-    border: 1.5px solid var(--border-soft);
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 14px 38px rgba(74, 55, 40, 0.05);
-}
-
-/* ========== RESPONSIVE ========== */
-@media (max-width: 768px) {
-    h1 { 
-        font-size: 1.8rem !important; 
-    }
-    h2 { 
-        font-size: 1.4rem !important; 
-    }
-    [data-testid="metric-container"] [data-testid="metric-value"] {
-        font-size: 20px !important;
-    }
 }
