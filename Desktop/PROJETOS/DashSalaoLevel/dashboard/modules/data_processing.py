@@ -313,12 +313,31 @@ def criar_filtros(df, periodos_list, chave_unica):
     Returns:
         tuple: (meses_selecionados, canais_selecionados)
     """
+    import datetime
+
     col_f1, col_f2 = st.columns([1, 2])
-    
+
+    # Default: nov/2025 até hoje
+    corte = pd.Period('2025-11', 'M')
+    hoje = pd.Period(datetime.date.today(), 'M')
+    labels_default = periodos_list[-1:]
+    try:
+        if 'Periodo_Order' in df.columns:
+            periodos_map = df[['Periodo_Order', 'Mes_Ano_Label']].drop_duplicates()
+            candidatos = periodos_map[
+                (periodos_map['Periodo_Order'] >= corte) &
+                (periodos_map['Periodo_Order'] <= hoje)
+            ]['Mes_Ano_Label'].tolist()
+            candidatos = [l for l in candidatos if l in periodos_list]
+            if candidatos:
+                labels_default = candidatos
+    except Exception:
+        pass
+
     meses_sel = col_f1.multiselect(
         "Filtrar Período",
         periodos_list,
-        default=periodos_list[-1:],
+        default=labels_default,
         key=f"periodo_{chave_unica}"
     )
     
