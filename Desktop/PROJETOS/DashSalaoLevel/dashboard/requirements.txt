@@ -1,0 +1,9 @@
+streamlit
+pandas
+requests
+plotly
+scikit-learn
+gspread
+google-auth
+google-api-python-client
+python-dotenv
