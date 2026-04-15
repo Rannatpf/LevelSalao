@@ -8,6 +8,8 @@ import pandas as pd
 import gspread
 import json
 import os
+import re
+from pathlib import Path
 from google.oauth2.service_account import Credentials
 
 from .config import (
@@ -17,6 +19,15 @@ from .config import (
     CACHE_TTL
 )
 from .logger import logger, LogContext, log_erro, log_info
+
+
+def _streamlit_secrets_exist():
+    project_root = Path(__file__).resolve().parent.parent
+    candidate_paths = [
+        Path.home() / ".streamlit" / "secrets.toml",
+        project_root / ".streamlit" / "secrets.toml",
+    ]
+    return any(path.exists() for path in candidate_paths)
 
 
 def formatar_moeda_br(valor):
@@ -32,6 +43,44 @@ def formatar_moeda_br(valor):
     if valor == 0:
         return "R$ 0,00"
     return f"R$ {valor:,.2f}".replace(",", "|").replace(".", ",").replace("|", ".")
+
+
+def _parse_currency_br(value):
+    if pd.isna(value):
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    digits = re.sub(r"[^\d,.-]", "", str(value))
+    if not digits:
+        return 0.0
+    normalized = digits.replace(".", "").replace(",", ".")
+    try:
+        return float(normalized)
+    except ValueError:
+        return 0.0
+
+
+def _infer_default_year(df):
+    for column in ["Data do Faturamento", "Data de contato"]:
+        if column in df.columns:
+            years = df[column].astype(str).str.extract(r"(\d{4})")[0].dropna()
+            if not years.empty:
+                return int(years.mode().iloc[0])
+    return pd.Timestamp.now().year
+
+
+def _parse_sheet_date(value, default_year):
+    if pd.isna(value):
+        return pd.NaT
+
+    text = str(value).strip()
+    if not text:
+        return pd.NaT
+
+    if re.search(r"\d{4}", text):
+        return pd.to_datetime(text, dayfirst=True, errors="coerce")
+
+    return pd.to_datetime(f"{text}/{default_year}", dayfirst=True, errors="coerce")
 
 
 @st.cache_data(ttl=CACHE_TTL)
@@ -55,10 +104,18 @@ def carregar_dados_mestre():
         creds_source = None
         
         # Prioridade 1: Streamlit Secrets (gcp_service_account) - PRODUÇÃO
+        secrets_available = _streamlit_secrets_exist()
+        streamlit_secrets = None
+        if secrets_available:
+            try:
+                streamlit_secrets = st.secrets
+            except Exception as e:
+                log_info(f"⚠ Streamlit Secrets indisponível: {e}")
+
         try:
-            if 'gcp_service_account' in st.secrets:
+            if streamlit_secrets and 'gcp_service_account' in streamlit_secrets:
                 creds = Credentials.from_service_account_info(
-                    st.secrets["gcp_service_account"],
+                    streamlit_secrets["gcp_service_account"],
                     scopes=scope
                 )
                 creds_source = "Streamlit Secrets"
@@ -93,7 +150,7 @@ def carregar_dados_mestre():
             error_msg = (
                 f"❌ Nenhuma fonte de credenciais disponível!\n\n"
                 f"**Diagnóstico:**\n"
-                f"- Streamlit Secrets config: {'✓ Detectado' if 'gcp_service_account' in st.secrets else '✗ Não encontrado'}\n"
+                f"- Streamlit Secrets config: {'✓ Detectado' if streamlit_secrets and 'gcp_service_account' in streamlit_secrets else '✗ Não encontrado'}\n"
                 f"- Env var GOOGLE_SHEETS_CREDENTIALS_JSON: {'✓ Configurado' if GOOGLE_SHEETS_CREDENTIALS_JSON else '✗ Vazio'}\n"
                 f"- Arquivo {GOOGLE_SHEETS_CREDENTIALS_PATH}: {'✓ Existe' if os.path.exists(GOOGLE_SHEETS_CREDENTIALS_PATH) else '✗ Não existe'}\n\n"
                 f"**Solução para Streamlit Cloud:**\n"
@@ -126,8 +183,13 @@ def carregar_dados_mestre():
             cols.append(f"{c}_{count[c]}" if count[c] > 1 else c)
         df.columns = cols
 
-        # Processamento de datas (Nov/Dez = 2025, outros = 2026)
-        df['Data_Ref'] = pd.to_datetime(df['Data de contato'], format='%d/%m', errors='coerce')
+        default_year = _infer_default_year(df)
+
+        # Processamento de datas baseado no formato real da planilha
+        if 'Data de contato' in df.columns:
+            df['Data_Ref'] = df['Data de contato'].apply(lambda value: _parse_sheet_date(value, default_year))
+        else:
+            df['Data_Ref'] = pd.NaT
         
         def ajustar_ano(dt):
             if pd.isnull(dt): 
@@ -135,18 +197,42 @@ def carregar_dados_mestre():
             return dt.replace(year=2025) if dt.month >= 11 else dt.replace(year=2026)
         
         df['Data_Ref'] = df['Data_Ref'].apply(ajustar_ano)
-        df = df.dropna(subset=['Data_Ref'])
-        df['Mes_Ano_Label'] = df['Data_Ref'].dt.strftime('%b/%y')
-        df['Periodo_Order'] = df['Data_Ref'].dt.to_period('M')
-        df = df.sort_values('Data_Ref')
+
+        if df['Data_Ref'].notna().any():
+            df = df.dropna(subset=['Data_Ref'])
+            df['Mes_Ano_Label'] = df['Data_Ref'].dt.strftime('%b/%y')
+            df['Periodo_Order'] = df['Data_Ref'].dt.to_period('M')
+            df = df.sort_values('Data_Ref')
+        elif 'Mês' in df.columns:
+            df['Mes_Ano_Label'] = df['Mês'].astype(str).str.strip()
+            df['Periodo_Order'] = pd.RangeIndex(start=0, stop=len(df), step=1)
+        else:
+            df['Mes_Ano_Label'] = 'Sem período'
+            df['Periodo_Order'] = pd.RangeIndex(start=0, stop=len(df), step=1)
+
+        if 'Mes_Ano_Label' not in df.columns:
+            df['Mes_Ano_Label'] = pd.Series(dtype='object')
+        if 'Periodo_Order' not in df.columns:
+            df['Periodo_Order'] = pd.Series(dtype='period[M]')
 
         # Conversão de valores monetários
-        df['Faturamento_Num'] = df['Faturamento'].astype(str).replace(r'[\D]', '', regex=True)
-        df['Faturamento_Num'] = pd.to_numeric(df['Faturamento_Num'], errors='coerce').fillna(0) / 100
+        if 'Faturamento' in df.columns:
+            df['Faturamento_Num'] = df['Faturamento'].apply(_parse_currency_br)
+        else:
+            df['Faturamento_Num'] = 0.0
         
         # Colunas booleanas
-        df['is_faturado'] = df['Status'].apply(lambda x: 1 if "faturado" in str(x).lower() else 0)
-        df['is_qualificado'] = df['Qualificação'].apply(lambda x: 1 if "qualificado" in str(x).lower() else 0)
+        if 'Status' in df.columns:
+            status_normalizado = df['Status'].astype(str).str.lower().str.strip()
+            df['is_faturado'] = status_normalizado.eq('faturado')
+            df['is_qualificado'] = status_normalizado.isin(['qualificado', 'faturado', 'agendamento realizado', 'em andamento'])
+        else:
+            df['is_faturado'] = 0
+            df['is_qualificado'] = 0
+
+        if 'Qualificação' in df.columns:
+            qualificacao_normalizada = df['Qualificação'].astype(str).str.lower().str.strip()
+            df['is_qualificado'] = qualificacao_normalizada.eq('qualificado') | df.get('is_qualificado', False)
         
         # ✅ FILTRO: Remover outlier "Mídia Offline"
         df = df[df['Origem'] != 'Mídia Offline'].copy()
@@ -154,12 +240,20 @@ def carregar_dados_mestre():
         # Análise de Lag (dias até faturamento)
         if 'Data do Faturamento' in df.columns and 'Data de contato' in df.columns:
             try:
-                df['Data_Fat'] = pd.to_datetime(df['Data do Faturamento'], format='%d/%m', errors='coerce')
-                df['Data_Fat'] = df['Data_Fat'].apply(lambda x: x.replace(year=2025) if pd.notna(x) and x.month >= 11 else x.replace(year=2026) if pd.notna(x) else x)
+                df['Data_Fat'] = df['Data do Faturamento'].apply(lambda value: _parse_sheet_date(value, default_year))
                 df['Dias_Lag'] = (df['Data_Fat'] - df['Data_Ref']).dt.days
                 df['Dias_Lag'] = df['Dias_Lag'].apply(lambda x: max(0, x) if pd.notna(x) else None)
             except:
                 df['Dias_Lag'] = None
+
+        if df.empty:
+            base_columns = [
+                'Data_Ref', 'Mes_Ano_Label', 'Periodo_Order', 'Faturamento_Num',
+                'is_faturado', 'is_qualificado', 'Dias_Lag'
+            ]
+            for column in base_columns:
+                if column not in df.columns:
+                    df[column] = pd.Series(dtype='object')
         
         return df
         

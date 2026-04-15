@@ -7,7 +7,6 @@ Suporta: Desenvolvimento Local + Streamlit Cloud
 import os
 import json
 from pathlib import Path
-import streamlit as st
 
 # Carregar variáveis de ambiente do .env (opcional - pode não estar disponível em produção)
 try:
@@ -38,15 +37,6 @@ LOG_FILE = os.getenv('LOG_FILE', 'app.log')
 GOOGLE_SHEETS_CREDENTIALS_PATH = os.getenv('GOOGLE_SHEETS_CREDENTIALS_PATH', 'credentials.json')
 GOOGLE_SHEETS_CREDENTIALS_JSON = os.getenv('GOOGLE_SHEETS_CREDENTIALS_JSON')
 GOOGLE_SHEETS_ID = os.getenv('GOOGLE_SHEETS_ID', '1YR4uxDsNf-WlODmtUUJDliGETr9LGBqgcTm74YjL-7E')
-
-# Tentar também do Streamlit secrets se disponível
-try:
-    if not GOOGLE_SHEETS_CREDENTIALS_JSON:
-        GOOGLE_SHEETS_CREDENTIALS_JSON = st.secrets.get('google_sheets_credentials_json')
-    if not GOOGLE_SHEETS_ID:
-        GOOGLE_SHEETS_ID = st.secrets.get('google_sheets_id', GOOGLE_SHEETS_ID)
-except Exception:
-    pass
 
 # ============================================
 # STREAMLIT

@@ -13,11 +13,35 @@
     --dark: #2D1E12;
     --light: #F5F1ED;
     --neutral: #E8E3DB;
+    --bg-top: #f8f4ee;
+    --bg-bottom: #efe7dc;
+    --surface: rgba(255, 255, 255, 0.88);
+    --surface-strong: #ffffff;
+    --border-soft: rgba(74, 55, 40, 0.10);
 }
 
 /* ========== TIPOGRAFIA GLOBAL ========== */
 * { 
     font-family: 'Montserrat', sans-serif !important;
+}
+
+/* ========== FUNDO E ESTRUTURA ========== */
+.stApp {
+    background:
+        radial-gradient(circle at top left, rgba(212, 163, 115, 0.20), transparent 28%),
+        radial-gradient(circle at top right, rgba(74, 55, 40, 0.10), transparent 24%),
+        linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%) !important;
+}
+
+.block-container {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+    max-width: 1400px !important;
+}
+
+/* ========== TÍTULO E SUBTÍTULO ========== */
+h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.02em !important;
 }
 
 /* ========== HEADINGS (Alto Contraste) ========== */
@@ -53,11 +77,12 @@ p, span, div {
 
 /* ========== METRICS (KPI Cards) ========== */
 [data-testid="metric-container"] {
-    background: linear-gradient(135deg, #ffffff 0%, #fafaf7 100%) !important;
-    border: 2px solid var(--neutral) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
-    padding: 16px 20px !important;
+    background: linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(250,247,242,0.96) 100%) !important;
+    border: 1px solid var(--border-soft) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 10px 30px rgba(45, 30, 18, 0.06) !important;
+    padding: 18px 20px !important;
+    backdrop-filter: blur(8px);
 }
 
 [data-testid="metric-container"] [data-testid="metric-label"] {
@@ -81,23 +106,26 @@ p, span, div {
 
 /* ========== TABS ========== */
 [data-testid="stTabs"] [role="tablist"] {
-    border-bottom: 2px solid var(--neutral) !important;
-    gap: 24px !important;
+    border-bottom: 1px solid var(--border-soft) !important;
+    gap: 14px !important;
+    padding-bottom: 6px !important;
 }
 
 [data-testid="stTabs"] button[role="tab"] {
     color: var(--secondary) !important;
     font-weight: 600 !important;
-    border: none !important;
+    border: 1px solid transparent !important;
     border-bottom: 3px solid transparent !important;
-    padding: 12px 16px !important;
+    padding: 11px 16px !important;
     background-color: transparent !important;
+    border-radius: 12px 12px 0 0 !important;
 }
 
 [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
     color: var(--primary) !important;
     border-color: var(--primary) !important;
     font-weight: 700 !important;
+    background: rgba(255,255,255,0.72) !important;
 }
 
 /* ========== DIVIDERS ========== */
@@ -110,10 +138,50 @@ hr {
 
 /* ========== CONTAINERS COM BORDER ========== */
 [data-testid="stContainer"][border] {
-    border: 1px solid var(--neutral) !important;
-    border-radius: 12px !important;
-    background: linear-gradient(135deg, #ffffff 0%, #fafaf7 100%) !important;
+    border: 1px solid var(--border-soft) !important;
+    border-radius: 18px !important;
+    background: linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(250,247,242,0.96) 100%) !important;
     padding: 20px !important;
+    box-shadow: 0 10px 30px rgba(45, 30, 18, 0.05) !important;
+}
+
+/* ========== HERO / INSIGHTS ========== */
+.hero-panel {
+    background: linear-gradient(135deg, rgba(45, 30, 18, 0.94), rgba(74, 55, 40, 0.88));
+    color: #fff !important;
+    border-radius: 24px;
+    padding: 24px 28px;
+    box-shadow: 0 18px 50px rgba(45, 30, 18, 0.18);
+}
+
+.hero-panel h1,
+.hero-panel h2,
+.hero-panel h3,
+.hero-panel p,
+.hero-panel span {
+    color: #fff !important;
+}
+
+.insight-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(212, 163, 115, 0.14);
+    border: 1px solid rgba(212, 163, 115, 0.22);
+    color: var(--secondary) !important;
+    font-weight: 700;
+    margin-right: 8px;
+    margin-bottom: 8px;
+}
+
+.section-card {
+    background: var(--surface-strong);
+    border: 1px solid var(--border-soft);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 14px 38px rgba(45, 30, 18, 0.05);
 }
 
 /* ========== TABELAS ========== */
@@ -194,6 +262,15 @@ button {
 button:hover {
     background-color: var(--primary-dark) !important;
     box-shadow: 0 4px 12px rgba(212, 163, 115, 0.3) !important;
+}
+
+/* ========== STREAMLIT CHROME ========== */
+#MainMenu {
+    visibility: hidden;
+}
+
+footer {
+    visibility: hidden;
 }
 
 /* ========== SUBHEADERS ========== */
