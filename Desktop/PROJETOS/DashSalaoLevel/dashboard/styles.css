@@ -1,0 +1,219 @@
+/* ============================================
+   DESIGN SYSTEM - LEVEL SALÃO v2.0
+   Estilos Premium com Alto Contraste e Responsividade
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+/* ========== VARIÁVEIS GLOBAIS ========== */
+:root {
+    --primary: #D4A373;
+    --primary-dark: #C89860;
+    --secondary: #4A3728;
+    --dark: #2D1E12;
+    --light: #F5F1ED;
+    --neutral: #E8E3DB;
+}
+
+/* ========== TIPOGRAFIA GLOBAL ========== */
+* { 
+    font-family: 'Montserrat', sans-serif !important;
+}
+
+/* ========== HEADINGS (Alto Contraste) ========== */
+h1 { 
+    color: var(--dark) !important; 
+    font-weight: 700 !important;
+    font-size: 2.5rem !important;
+    margin-bottom: 1rem !important;
+}
+
+h2 { 
+    color: var(--secondary) !important; 
+    font-weight: 700 !important;
+    font-size: 1.8rem !important;
+    margin-bottom: 0.8rem !important;
+}
+
+h3 { 
+    color: var(--dark) !important; 
+    font-weight: 600 !important;
+    font-size: 1.3rem !important;
+}
+
+h4, h5, h6 { 
+    color: var(--secondary) !important;
+    font-weight: 600 !important;
+}
+
+/* ========== TEXTO GERAL ========== */
+p, span, div {
+    color: var(--secondary) !important;
+}
+
+/* ========== METRICS (KPI Cards) ========== */
+[data-testid="metric-container"] {
+    background: linear-gradient(135deg, #ffffff 0%, #fafaf7 100%) !important;
+    border: 2px solid var(--neutral) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+    padding: 16px 20px !important;
+}
+
+[data-testid="metric-container"] [data-testid="metric-label"] {
+    color: var(--secondary) !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+[data-testid="metric-container"] [data-testid="metric-value"] {
+    color: var(--dark) !important;
+    font-weight: 700 !important;
+    font-size: 24px !important;
+}
+
+[data-testid="metric-container"] [data-testid="metric-delta"] {
+    color: #666 !important;
+    font-weight: 600 !important;
+}
+
+/* ========== TABS ========== */
+[data-testid="stTabs"] [role="tablist"] {
+    border-bottom: 2px solid var(--neutral) !important;
+    gap: 24px !important;
+}
+
+[data-testid="stTabs"] button[role="tab"] {
+    color: var(--secondary) !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+    padding: 12px 16px !important;
+    background-color: transparent !important;
+}
+
+[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    font-weight: 700 !important;
+}
+
+/* ========== DIVIDERS ========== */
+hr {
+    border: none !important;
+    height: 2px !important;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent) !important;
+    margin: 24px 0 !important;
+}
+
+/* ========== CONTAINERS COM BORDER ========== */
+[data-testid="stContainer"][border] {
+    border: 1px solid var(--neutral) !important;
+    border-radius: 12px !important;
+    background: linear-gradient(135deg, #ffffff 0%, #fafaf7 100%) !important;
+    padding: 20px !important;
+}
+
+/* ========== TABELAS ========== */
+[data-testid="stDataFrame"] {
+    background-color: #ffffff !important;
+}
+
+[data-testid="stDataFrame"] table {
+    border-collapse: collapse !important;
+}
+
+[data-testid="stDataFrame"] thead {
+    background-color: #f5f1ed !important;
+    border-bottom: 2px solid var(--primary) !important;
+}
+
+[data-testid="stDataFrame"] th {
+    color: var(--dark) !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    font-size: 12px !important;
+    letter-spacing: 0.5px !important;
+    padding: 12px 8px !important;
+    background-color: #f5f1ed !important;
+}
+
+[data-testid="stDataFrame"] tbody tr {
+    border-bottom: 1px solid var(--neutral) !important;
+}
+
+[data-testid="stDataFrame"] tbody tr:hover {
+    background-color: rgba(212, 163, 115, 0.08) !important;
+}
+
+[data-testid="stDataFrame"] td {
+    color: var(--secondary) !important;
+    padding: 12px 8px !important;
+}
+
+/* ========== INPUTS & SELECTS ========== */
+[data-testid="stMultiSelect"] div[data-baseweb="select"],
+[data-testid="stSelectbox"] div[data-baseweb="select"],
+input, textarea, select {
+    background-color: #ffffff !important;
+    border: 1.5px solid var(--neutral) !important;
+    border-radius: 8px !important;
+    color: var(--secondary) !important;
+    font-weight: 500 !important;
+}
+
+/* ========== ALERTS & MESSAGES ========== */
+[data-testid="stAlert"] {
+    border-radius: 8px !important;
+    padding: 16px !important;
+}
+
+[data-testid="stAlert"] > div {
+    color: var(--secondary) !important;
+    font-weight: 500 !important;
+}
+
+/* ========== CAPTIONS & SMALL TEXT ========== */
+[data-testid="stCaption"] {
+    color: var(--secondary) !important;
+    font-weight: 500 !important;
+}
+
+/* ========== BUTTONS ========== */
+button {
+    background-color: var(--primary) !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 10px 20px !important;
+}
+
+button:hover {
+    background-color: var(--primary-dark) !important;
+    box-shadow: 0 4px 12px rgba(212, 163, 115, 0.3) !important;
+}
+
+/* ========== SUBHEADERS ========== */
+.stSubheader {
+    color: var(--dark) !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid var(--primary) !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 16px !important;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    h1 { 
+        font-size: 1.8rem !important; 
+    }
+    h2 { 
+        font-size: 1.4rem !important; 
+    }
+    [data-testid="metric-container"] [data-testid="metric-value"] {
+        font-size: 20px !important;
+    }
+}
