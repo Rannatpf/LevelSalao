@@ -217,10 +217,10 @@ def gerar_insights_ia(df):
         )
 
     metrics = {
-        "accuracy": accuracy_score(target, pred),
-        "precision": precision_score(target, pred, zero_division=0),
-        "recall": recall_score(target, pred, zero_division=0),
-        "roc_auc": roc_auc_score(target, prob) if target.nunique() > 1 else 0,
+        "accuracy": accuracy_score(y_test, pred),
+        "precision": precision_score(y_test, pred, zero_division=0),
+        "recall": recall_score(y_test, pred, zero_division=0),
+        "roc_auc": roc_auc_score(y_test, prob) if y_test.nunique() > 1 else 0,
         "receita_esperada": receita_esperada,
         "ticket_medio": ticket_medio,
         "taxa_real": float(target.mean() * 100),
