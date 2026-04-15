@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
+import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
