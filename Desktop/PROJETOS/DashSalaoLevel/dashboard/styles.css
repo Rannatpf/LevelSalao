@@ -1,23 +1,24 @@
 /* ============================================
-   DESIGN SYSTEM - LEVEL SALÃO v2.0
-   Estilos Premium com Alto Contraste e Responsividade
+   DESIGN SYSTEM - LEVEL SALÃO v3.0
+   Paleta alinhada à marca Level Salão
    ============================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
 
 /* ========== VARIÁVEIS GLOBAIS ========== */
 :root {
-    --primary: #D4A373;
-    --primary-dark: #C89860;
-    --secondary: #4A3728;
-    --dark: #2D1E12;
-    --light: #F5F1ED;
-    --neutral: #E8E3DB;
-    --bg-top: #f8f4ee;
-    --bg-bottom: #efe7dc;
-    --surface: rgba(255, 255, 255, 0.88);
-    --surface-strong: #ffffff;
-    --border-soft: rgba(74, 55, 40, 0.10);
+    --primary:       #4A3728;   /* marrom escuro — cor da marca          */
+    --secondary:     #D4A373;   /* dourado/bege sofisticado               */
+    --secondary-dark:#C89860;   /* dourado mais escuro (hover)            */
+    --accent:        #F1E9E0;   /* fundo claro / superfície               */
+    --text-dark:     #2B2B2B;   /* texto principal — alto contraste       */
+    --text-light:    #6B6B6B;   /* texto secundário / captions            */
+    --white:         #FFFFFF;
+    --neutral:       #E8E3DB;
+    --bg-top:        #f8f4ee;
+    --bg-bottom:     #efe7dc;
+    --border-soft:   rgba(74, 55, 40, 0.14);
+    --surface:       rgba(255, 255, 255, 0.92);
 }
 
 /* ========== TIPOGRAFIA GLOBAL ========== */
@@ -46,27 +47,27 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ========== HEADINGS (Alto Contraste) ========== */
 h1 { 
-    color: var(--dark) !important; 
+    color: var(--primary) !important; 
     font-weight: 700 !important;
     font-size: 2.5rem !important;
     margin-bottom: 1rem !important;
 }
 
 h2 { 
-    color: var(--secondary) !important; 
+    color: var(--primary) !important; 
     font-weight: 700 !important;
     font-size: 1.8rem !important;
     margin-bottom: 0.8rem !important;
 }
 
 h3 { 
-    color: var(--dark) !important; 
+    color: var(--text-dark) !important; 
     font-weight: 600 !important;
     font-size: 1.3rem !important;
 }
 
 h4, h5, h6 { 
-    color: var(--secondary) !important;
+    color: var(--primary) !important;
     font-weight: 600 !important;
 }
 
@@ -76,35 +77,41 @@ h4, h5, h6 {
 .stMarkdown p,
 .stMarkdown li,
 .stMarkdown blockquote {
-    color: var(--secondary) !important;
+    color: var(--text-dark) !important;
+}
+
+/* Labels e captions do Streamlit */
+[data-testid="stWidgetLabel"] p,
+label {
+    color: var(--text-dark) !important;
+    font-weight: 600 !important;
 }
 
 /* ========== METRICS (KPI Cards) ========== */
 [data-testid="metric-container"] {
-    background: linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(250,247,242,0.96) 100%) !important;
-    border: 1px solid var(--border-soft) !important;
+    background: linear-gradient(135deg, var(--white) 0%, #faf7f3 100%) !important;
+    border: 1.5px solid var(--border-soft) !important;
     border-radius: 18px !important;
-    box-shadow: 0 10px 30px rgba(45, 30, 18, 0.06) !important;
+    box-shadow: 0 10px 30px rgba(74, 55, 40, 0.08) !important;
     padding: 18px 20px !important;
     backdrop-filter: blur(8px);
 }
 
 [data-testid="metric-container"] [data-testid="metric-label"] {
-    color: var(--secondary) !important;
+    color: var(--text-light) !important;
     font-weight: 700 !important;
-    font-size: 13px !important;
+    font-size: 12px !important;
     text-transform: uppercase !important;
-    letter-spacing: 0.5px !important;
+    letter-spacing: 0.6px !important;
 }
 
 [data-testid="metric-container"] [data-testid="metric-value"] {
-    color: var(--dark) !important;
+    color: var(--text-dark) !important;
     font-weight: 700 !important;
-    font-size: 24px !important;
+    font-size: 26px !important;
 }
 
 [data-testid="metric-container"] [data-testid="metric-delta"] {
-    color: #666 !important;
     font-weight: 600 !important;
 }
 
@@ -116,7 +123,7 @@ h4, h5, h6 {
 }
 
 [data-testid="stTabs"] button[role="tab"] {
-    color: var(--secondary) !important;
+    color: var(--text-light) !important;
     font-weight: 600 !important;
     border: 1px solid transparent !important;
     border-bottom: 3px solid transparent !important;
@@ -127,7 +134,7 @@ h4, h5, h6 {
 
 [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
     color: var(--primary) !important;
-    border-color: var(--primary) !important;
+    border-color: var(--secondary) !important;
     font-weight: 700 !important;
     background: rgba(255,255,255,0.72) !important;
 }
@@ -136,17 +143,17 @@ h4, h5, h6 {
 hr {
     border: none !important;
     height: 2px !important;
-    background: linear-gradient(90deg, transparent, var(--primary), transparent) !important;
+    background: linear-gradient(90deg, transparent, var(--secondary), transparent) !important;
     margin: 24px 0 !important;
 }
 
 /* ========== CONTAINERS COM BORDER ========== */
 [data-testid="stContainer"][border] {
-    border: 1px solid var(--border-soft) !important;
+    border: 1.5px solid var(--border-soft) !important;
     border-radius: 18px !important;
-    background: linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(250,247,242,0.96) 100%) !important;
+    background: linear-gradient(135deg, var(--white) 0%, #faf7f3 100%) !important;
     padding: 20px !important;
-    box-shadow: 0 10px 30px rgba(45, 30, 18, 0.05) !important;
+    box-shadow: 0 10px 30px rgba(74, 55, 40, 0.05) !important;
 }
 
 /* ========== HERO / INSIGHTS ========== */
@@ -190,7 +197,7 @@ hr {
 
 /* ========== TABELAS ========== */
 [data-testid="stDataFrame"] {
-    background-color: #ffffff !important;
+    background-color: var(--white) !important;
 }
 
 [data-testid="stDataFrame"] table {
@@ -198,18 +205,18 @@ hr {
 }
 
 [data-testid="stDataFrame"] thead {
-    background-color: #f5f1ed !important;
-    border-bottom: 2px solid var(--primary) !important;
+    background-color: var(--accent) !important;
+    border-bottom: 2px solid var(--secondary) !important;
 }
 
 [data-testid="stDataFrame"] th {
-    color: var(--dark) !important;
+    color: var(--primary) !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
     font-size: 12px !important;
     letter-spacing: 0.5px !important;
     padding: 12px 8px !important;
-    background-color: #f5f1ed !important;
+    background-color: var(--accent) !important;
 }
 
 [data-testid="stDataFrame"] tbody tr {
@@ -221,47 +228,97 @@ hr {
 }
 
 [data-testid="stDataFrame"] td {
-    color: var(--secondary) !important;
+    color: var(--text-dark) !important;
     padding: 12px 8px !important;
 }
 
 /* ========== INPUTS & SELECTS ========== */
-[data-testid="stMultiSelect"] div[data-baseweb="select"],
-[data-testid="stSelectbox"] div[data-baseweb="select"],
-input, textarea, select {
-    background-color: #ffffff !important;
-    border: 1.5px solid var(--neutral) !important;
+
+/* Container geral do multiselect e selectbox */
+[data-testid="stMultiSelect"] [data-baseweb="select"],
+[data-testid="stSelectbox"] [data-baseweb="select"] {
+    background-color: var(--white) !important;
+    border: 1.5px solid var(--border-soft) !important;
     border-radius: 8px !important;
-    color: var(--secondary) !important;
-    font-weight: 500 !important;
-    overflow: visible !important;
 }
 
-/* Corrige tags/chips do multiselect cortadas nas bordas */
-[data-testid="stMultiSelect"] div[data-baseweb="select"] > div {
-    overflow: visible !important;
+/* Div interna que base-web renderiza com fundo escuro */
+[data-testid="stMultiSelect"] [data-baseweb="select"] > div,
+[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+    background-color: var(--white) !important;
+    border: none !important;
+    border-radius: 8px !important;
     flex-wrap: wrap !important;
     padding: 4px 6px !important;
 }
 
+/* Input interno */
+[data-testid="stMultiSelect"] input,
+[data-testid="stSelectbox"] input {
+    background-color: transparent !important;
+    color: var(--text-dark) !important;
+}
+
+/* Tags / chips selecionados */
 [data-testid="stMultiSelect"] [data-baseweb="tag"] {
     background-color: var(--primary) !important;
     border-radius: 6px !important;
-    margin: 2px !important;
-    max-width: calc(100% - 8px) !important;
-    overflow: visible !important;
+    margin: 2px 3px !important;
+    border: none !important;
 }
 
+/* Quadrado/ícone branco antes do texto da tag — ocultar */
+[data-testid="stMultiSelect"] [data-baseweb="tag"] > span:first-child,
+[data-testid="stMultiSelect"] [data-baseweb="tag"] svg {
+    display: none !important;
+}
+
+/* Texto da tag */
 [data-testid="stMultiSelect"] [data-baseweb="tag"] span {
-    color: #ffffff !important;
+    color: var(--white) !important;
     font-weight: 600 !important;
-    white-space: normal !important;
-    overflow: visible !important;
-    text-overflow: unset !important;
+    font-size: 13px !important;
+    white-space: nowrap !important;
 }
 
+/* Botão × de remover tag */
 [data-testid="stMultiSelect"] [data-baseweb="tag"] [role="presentation"] {
-    color: #ffffff !important;
+    color: var(--accent) !important;
+    opacity: 0.85;
+}
+
+/* Dropdown aberto (popover / listbox) */
+[data-baseweb="popover"],
+[data-baseweb="menu"],
+[role="listbox"] {
+    background-color: var(--white) !important;
+    border: 1.5px solid var(--border-soft) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(74,55,40,0.12) !important;
+}
+
+/* Opções do dropdown */
+[role="option"] {
+    background-color: var(--white) !important;
+    color: var(--text-dark) !important;
+}
+
+[role="option"]:hover,
+[role="option"][aria-selected="true"] {
+    background-color: var(--accent) !important;
+    color: var(--primary) !important;
+    font-weight: 600 !important;
+}
+
+/* Inputs de texto e textarea genéricos */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+    background-color: var(--white) !important;
+    border: 1.5px solid var(--border-soft) !important;
+    border-radius: 8px !important;
+    color: var(--text-dark) !important;
+    font-weight: 500 !important;
 }
 
 /* ========== ALERTS & MESSAGES ========== */
@@ -271,23 +328,22 @@ input, textarea, select {
 }
 
 [data-testid="stAlert"] > div {
-    color: var(--secondary) !important;
+    color: var(--text-dark) !important;
     font-weight: 500 !important;
 }
 
 /* ========== CAPTIONS & SMALL TEXT ========== */
-[data-testid="stCaption"] {
-    color: var(--secondary) !important;
+[data-testid="stCaption"],
+[data-testid="stCaption"] p {
+    color: var(--text-light) !important;
     font-weight: 500 !important;
 }
 
 /* ========== BUTTONS ========== */
-/* Escopo restrito a botões de ação do usuário (st.button)
-   para não afetar botões de abas, multiselect, dataframe, etc. */
 [data-testid="stButton"] > button,
 [data-testid="stFormSubmitButton"] > button {
     background-color: var(--primary) !important;
-    color: #ffffff !important;
+    color: var(--white) !important;
     font-weight: 600 !important;
     border: none !important;
     border-radius: 8px !important;
@@ -296,8 +352,9 @@ input, textarea, select {
 
 [data-testid="stButton"] > button:hover,
 [data-testid="stFormSubmitButton"] > button:hover {
-    background-color: var(--primary-dark) !important;
-    box-shadow: 0 4px 12px rgba(212, 163, 115, 0.3) !important;
+    background-color: var(--secondary) !important;
+    color: var(--white) !important;
+    box-shadow: 0 4px 12px rgba(212, 163, 115, 0.35) !important;
 }
 
 /* ========== STREAMLIT CHROME ========== */
@@ -311,11 +368,34 @@ footer {
 
 /* ========== SUBHEADERS ========== */
 .stSubheader {
-    color: var(--dark) !important;
+    color: var(--primary) !important;
     font-weight: 700 !important;
-    border-bottom: 2px solid var(--primary) !important;
+    border-bottom: 2px solid var(--secondary) !important;
     padding-bottom: 8px !important;
     margin-bottom: 16px !important;
+}
+
+/* ========== INSIGHT CHIPS ========== */
+.insight-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(212, 163, 115, 0.14);
+    border: 1px solid rgba(212, 163, 115, 0.30);
+    color: var(--primary) !important;
+    font-weight: 700;
+    margin-right: 8px;
+    margin-bottom: 8px;
+}
+
+.section-card {
+    background: var(--white);
+    border: 1.5px solid var(--border-soft);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 14px 38px rgba(74, 55, 40, 0.05);
 }
 
 /* ========== RESPONSIVE ========== */
