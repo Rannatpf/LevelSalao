@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
+from sklearn.model_selection import train_test_split
 import sys
 import re
 from pathlib import Path
@@ -153,6 +154,14 @@ def gerar_insights_ia(df):
         X[column] = encoder.fit_transform(X[column].astype(str).fillna("Desconhecido"))
         encoders[column] = encoder
 
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        target,
+        test_size=0.25,
+        random_state=42,
+        stratify=target if target.nunique() > 1 else None,
+    )
+
     model = RandomForestClassifier(
         n_estimators=250,
         random_state=42,
@@ -160,13 +169,22 @@ def gerar_insights_ia(df):
         max_depth=7,
         min_samples_leaf=2,
     )
-    model.fit(X, target)
+    model.fit(X_train, y_train)
 
-    pred = model.predict(X)
-    prob = model.predict_proba(X)[:, 1]
+    pred = model.predict(X_test)
+    prob = model.predict_proba(X_test)[:, 1]
+
+    final_model = RandomForestClassifier(
+        n_estimators=250,
+        random_state=42,
+        class_weight="balanced_subsample",
+        max_depth=7,
+        min_samples_leaf=2,
+    )
+    final_model.fit(X, target)
 
     df_score = model_df.copy()
-    df_score["Prob_Conversao"] = prob
+    df_score["Prob_Conversao"] = final_model.predict_proba(X)[:, 1]
 
     leads_pendentes = df_score[df_score["is_faturado"] == 0].copy()
     if not leads_pendentes.empty:
@@ -177,8 +195,32 @@ def gerar_insights_ia(df):
 
     importancias = pd.DataFrame({
         "Variavel": feature_cols,
-        "Importancia": model.feature_importances_,
+        "Importancia": final_model.feature_importances_,
     }).sort_values("Importancia", ascending=True)
+
+    canais_prioritarios = pd.DataFrame()
+    if "Origem" in leads_pendentes.columns and not leads_pendentes.empty:
+        canais_prioritarios = (
+            leads_pendentes.groupby("Origem")
+            .agg(
+                Leads_Pendentes=("Prob_Conversao", "count"),
+                Score_Medio=("Prob_Conversao", "mean"),
+            )
+            .sort_values(["Score_Medio", "Leads_Pendentes"], ascending=False)
+            .reset_index()
+        )
+
+    profissionais_prioritarios = pd.DataFrame()
+    if "Profissional" in leads_pendentes.columns and not leads_pendentes.empty:
+        profissionais_prioritarios = (
+            leads_pendentes.groupby("Profissional")
+            .agg(
+                Leads_Pendentes=("Prob_Conversao", "count"),
+                Score_Medio=("Prob_Conversao", "mean"),
+            )
+            .sort_values(["Score_Medio", "Leads_Pendentes"], ascending=False)
+            .reset_index()
+        )
 
     metrics = {
         "accuracy": accuracy_score(target, pred),
@@ -194,6 +236,8 @@ def gerar_insights_ia(df):
         "metrics": metrics,
         "importancias": importancias,
         "leads_pendentes": leads_pendentes,
+        "canais_prioritarios": canais_prioritarios,
+        "profissionais_prioritarios": profissionais_prioritarios,
     }
 
 @st.cache_data(ttl=300)
@@ -566,6 +610,20 @@ if df_raw is not None:
                 if "Prob_Conversao" in tabela_ia.columns:
                     tabela_ia["Prob_Conversao"] = (tabela_ia["Prob_Conversao"] * 100).round(1).astype(str) + "%"
                 st.dataframe(tabela_ia, use_container_width=True, hide_index=True)
+
+            canais_prioritarios = insights_ia["canais_prioritarios"]
+            profissionais_prioritarios = insights_ia["profissionais_prioritarios"]
+            if not canais_prioritarios.empty or not profissionais_prioritarios.empty:
+                st.markdown("### Canais e profissionais prioritários")
+                col_prior_1, col_prior_2 = st.columns(2)
+                with col_prior_1:
+                    if not canais_prioritarios.empty:
+                        st.caption("Canais com maior score médio de conversão")
+                        st.dataframe(canais_prioritarios.head(8), use_container_width=True, hide_index=True)
+                with col_prior_2:
+                    if not profissionais_prioritarios.empty:
+                        st.caption("Profissionais com maior score médio de conversão")
+                        st.dataframe(profissionais_prioritarios.head(8), use_container_width=True, hide_index=True)
 
     # ==========================================
     # ABA 6: SIMULADOR
