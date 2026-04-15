@@ -18,6 +18,9 @@ def gerar_alertas_criticos(df):
     """
     alertas_list = []
     
+    if len(df) == 0:
+        return alertas_list
+
     # Conversão geral baixa
     conv_geral = df['is_faturado'].mean() * 100 if len(df) > 0 else 0
     if conv_geral < 10:
@@ -27,9 +30,31 @@ def gerar_alertas_criticos(df):
             'desc': f'Taxa de {conv_geral:.1f}% abaixo de 10%. Intensifique follow-up.',
             'prioridade': 1
         })
+
+    # Leads qualificados parados
+    if 'is_qualificado' in df.columns:
+        qualificados_nao_faturados = df[(df['is_qualificado'] == 1) & (df['is_faturado'] == 0)]
+        if len(qualificados_nao_faturados) >= 8:
+            alertas_list.append({
+                'tipo': '🔴 CRÍTICO',
+                'titulo': 'Fila de Qualificados em Aberto',
+                'desc': f'{len(qualificados_nao_faturados)} leads qualificados ainda sem faturamento. Priorize os contatos mais quentes.',
+                'prioridade': 0
+            })
+
+    # Lag alto
+    if 'Dias_Lag' in df.columns:
+        lag_medio = df[df['is_faturado'] == 1]['Dias_Lag'].dropna().mean()
+        if pd.notna(lag_medio) and lag_medio > 7:
+            alertas_list.append({
+                'tipo': '🟡 ATENÇÃO',
+                'titulo': 'Ciclo de Venda Lento',
+                'desc': f'Lag médio de {lag_medio:.0f} dias até o faturamento. Ajuste cadência de follow-up.',
+                'prioridade': 2
+            })
     
     # Análise por canal
-    for canal in df['Origem'].unique():
+    for canal in df['Origem'].fillna('Desconhecida').unique():
         df_canal = df[df['Origem'] == canal]
         if len(df_canal) >= 5:
             taxa_conv = df_canal['is_faturado'].mean() * 100
@@ -72,6 +97,20 @@ def gerar_recomendacoes_ia(df):
             })
     except:
         pass
+
+    # Recomendação 1b: Replicar profissionais que convertem mais
+    try:
+        if 'Profissional' in df.columns:
+            melhor_prof = df.groupby('Profissional')['is_faturado'].mean().idxmax()
+            melhor_prof_taxa = df.groupby('Profissional')['is_faturado'].mean().max() * 100
+            if melhor_prof_taxa > 15:
+                recomendacoes.append({
+                    'titulo': f'✂️ Replicar padrão de {melhor_prof}',
+                    'acao': f'Esse profissional converte {melhor_prof_taxa:.1f}%. Use-o como referência de abordagem.',
+                    'impacto': '💰 Alto'
+                })
+    except:
+        pass
     
     # Recomendação 2: Qualificação baixa
     try:
@@ -82,6 +121,19 @@ def gerar_recomendacoes_ia(df):
                 'acao': f'Apenas {taxa_qualif:.1f}% dos leads qualificados. Revise critérios.',
                 'impacto': '⚠️ Médio'
             })
+    except:
+        pass
+
+    # Recomendação 2b: Reduzir lead time
+    try:
+        if 'Dias_Lag' in df.columns:
+            lag_medio = df[df['is_faturado'] == 1]['Dias_Lag'].dropna().mean()
+            if pd.notna(lag_medio) and lag_medio > 7:
+                recomendacoes.append({
+                    'titulo': f'⏳ Encurte o ciclo de venda',
+                    'acao': f'Lag médio de {lag_medio:.0f} dias. Use follow-up mais agressivo nas primeiras 72 horas.',
+                    'impacto': '📅 Médio'
+                })
     except:
         pass
     

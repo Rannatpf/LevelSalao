@@ -64,12 +64,6 @@ aplicar_css_premium()
 # CONFIG API
 # ============================================
 API_URL = "https://sheet-api-6826756112.us-central1.run.app/data"
-CSS_PATH = Path(__file__).with_name("styles.css")
-
-
-def _carregar_css_local():
-    if CSS_PATH.exists():
-        st.markdown(f"<style>{CSS_PATH.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
 
 
 def _parse_currency_br(value):
@@ -341,7 +335,6 @@ from modules import (
 # ============================================
 # CARREGAMENTO
 # ============================================
-_carregar_css_local()
 df_raw = carregar_dados_mestre()
 
 if df_raw is not None:
