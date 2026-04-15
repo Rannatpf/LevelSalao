@@ -313,26 +313,23 @@ def criar_filtros(df, periodos_list, chave_unica):
     Returns:
         tuple: (meses_selecionados, canais_selecionados)
     """
-    import datetime
-
     col_f1, col_f2 = st.columns([1, 2])
 
     # Default: nov/2025 até hoje
+    # Gera o conjunto de labels esperados por comparação de string para evitar
+    # erros de tipo quando Periodo_Order não é pd.Period
+    import datetime as _dt
     corte = pd.Period('2025-11', 'M')
-    hoje = pd.Period(datetime.date.today(), 'M')
-    labels_default = periodos_list[-1:]
-    try:
-        if 'Periodo_Order' in df.columns:
-            periodos_map = df[['Periodo_Order', 'Mes_Ano_Label']].drop_duplicates()
-            candidatos = periodos_map[
-                (periodos_map['Periodo_Order'] >= corte) &
-                (periodos_map['Periodo_Order'] <= hoje)
-            ]['Mes_Ano_Label'].tolist()
-            candidatos = [l for l in candidatos if l in periodos_list]
-            if candidatos:
-                labels_default = candidatos
-    except Exception:
-        pass
+    hoje = pd.Period(_dt.date.today(), 'M')
+    labels_no_range: set = set()
+    _p = corte
+    while _p <= hoje:
+        labels_no_range.add(_p.to_timestamp().strftime('%b/%y'))
+        _p = _p + 1
+
+    labels_default = [l for l in periodos_list if l in labels_no_range]
+    if not labels_default:
+        labels_default = periodos_list[-1:]
 
     meses_sel = col_f1.multiselect(
         "Filtrar Período",

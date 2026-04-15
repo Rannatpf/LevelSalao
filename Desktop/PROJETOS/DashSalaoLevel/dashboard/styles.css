@@ -105,24 +105,42 @@ hr {
     background-color: var(--primary) !important;
     border-radius: 6px !important;
     border: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 2px 6px 2px 4px !important;
+    overflow: visible !important;
+    max-width: none !important;
+    height: auto !important;
 }
 
-/* Oculta o ícone/quadrado inicial da tag (StartEnhancer do base-web) */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] [data-testid="stIconMaterial"],
-[data-testid="stMultiSelect"] [data-baseweb="tag"] > span:first-of-type:empty {
-    display: none !important;
+/*
+  Colapsa o StartEnhancer (primeiro filho do tag no base-web).
+  Não usa :empty porque o span pode conter um SVG; usa width:0 para ser seguro.
+*/
+[data-testid="stMultiSelect"] [data-baseweb="tag"] > span:first-child {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
 }
 
-/* Texto dentro da tag */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] span {
+/* Texto do label da tag (segundo filho) */
+[data-testid="stMultiSelect"] [data-baseweb="tag"] > span:nth-child(2) {
     color: #ffffff !important;
     font-weight: 600 !important;
     font-size: 13px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    flex: 0 0 auto !important;
 }
 
 /* Botão × dentro da tag */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] [role="presentation"] {
+[data-testid="stMultiSelect"] [data-baseweb="tag"] > span[role="presentation"] {
     color: rgba(255,255,255,0.8) !important;
+    flex-shrink: 0 !important;
 }
 
 /* ====== BOTÕES DE AÇÃO ====== */
