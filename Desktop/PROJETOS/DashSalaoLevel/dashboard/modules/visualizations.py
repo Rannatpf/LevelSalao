@@ -213,11 +213,11 @@ def criar_grafico_gauge(valor, titulo="", minimo=0, maximo=100, prefixo=""):
         title={'text': titulo},
         gauge={
             'axis': {'range': [minimo, maximo]},
-            'bar': {'color': "darkblue"},
+            'bar': {'color': "#4A3728"},
             'steps': [
-                {'range': [minimo, maximo/3], 'color': "lightgray"},
-                {'range': [maximo/3, 2*maximo/3], 'color': "gray"},
-                {'range': [2*maximo/3, maximo], 'color': "darkgray"}
+                {'range': [minimo, maximo/3], 'color': "#F5F1ED"},
+                {'range': [maximo/3, 2*maximo/3], 'color': "#E8D5BE"},
+                {'range': [2*maximo/3, maximo], 'color': "#D4A373"}
             ]
         }
     ))
@@ -225,7 +225,7 @@ def criar_grafico_gauge(valor, titulo="", minimo=0, maximo=100, prefixo=""):
     return fig
 
 
-def criar_grafico_radar(valores, categorias, titulo="", cor="rgba(76, 175, 80, 0.5)"):
+def criar_grafico_radar(valores, categorias, titulo="", cor="rgba(212, 163, 115, 0.5)"):
     """
     Cria gráfico radar (spider)
     

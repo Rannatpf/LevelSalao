@@ -71,7 +71,11 @@ h4, h5, h6 {
 }
 
 /* ========== TEXTO GERAL ========== */
-p, span, div {
+/* Escopo restrito ao conteúdo Markdown para não sobrescrever
+   texto branco de hero-panel, gráficos Plotly e internos Streamlit */
+.stMarkdown p,
+.stMarkdown li,
+.stMarkdown blockquote {
     color: var(--secondary) !important;
 }
 
@@ -278,7 +282,10 @@ input, textarea, select {
 }
 
 /* ========== BUTTONS ========== */
-button {
+/* Escopo restrito a botões de ação do usuário (st.button)
+   para não afetar botões de abas, multiselect, dataframe, etc. */
+[data-testid="stButton"] > button,
+[data-testid="stFormSubmitButton"] > button {
     background-color: var(--primary) !important;
     color: #ffffff !important;
     font-weight: 600 !important;
@@ -287,7 +294,8 @@ button {
     padding: 10px 20px !important;
 }
 
-button:hover {
+[data-testid="stButton"] > button:hover,
+[data-testid="stFormSubmitButton"] > button:hover {
     background-color: var(--primary-dark) !important;
     box-shadow: 0 4px 12px rgba(212, 163, 115, 0.3) !important;
 }
