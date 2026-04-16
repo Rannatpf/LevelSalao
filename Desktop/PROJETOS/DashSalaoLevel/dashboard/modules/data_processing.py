@@ -60,78 +60,44 @@ def _parse_currency_br(value):
         return 0.0
 
 
-# Mapeamento de nomes de meses em português → número
-_MESES_PT = {
-    'janeiro': 1, 'jan': 1,
-    'fevereiro': 2, 'fev': 2,
-    'março': 3, 'marco': 3, 'mar': 3,
-    'abril': 4, 'abr': 4,
-    'maio': 5, 'mai': 5,
-    'junho': 6, 'jun': 6,
-    'julho': 7, 'jul': 7,
-    'agosto': 8, 'ago': 8,
-    'setembro': 9, 'set': 9,
-    'outubro': 10, 'out': 10,
-    'novembro': 11, 'nov': 11,
-    'dezembro': 12, 'dez': 12,
-}
+def _parse_contact_date(value):
+    """Converte datas do tipo 03/11, 21 /11, 1/2, 1911 para Timestamp.
 
-# Rótulos curtos por número de mês
-_LABEL_MES = {
-    1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun',
-    7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez',
-}
-
-
-def _mes_nome_para_num(nome):
-    """Converte nome do mês em PT para número (1-12) ou None."""
-    return _MESES_PT.get(str(nome).strip().lower())
-
-
-def _extrair_dia(data_contato_str):
+    A linha do tempo começa em novembro/2025; então meses 11 e 12 ficam em 2025
+    e os meses 1-10 ficam em 2026.
     """
-    Extrai apenas o dia de valores como '03/11', '1911', '21 /11', '1/2'.
-    Estratégia: pega os dígitos antes da primeira barra (ou os 2 primeiros).
-    Retorna int ou None.
-    """
-    raw = re.sub(r'\s', '', str(data_contato_str).strip())
-    m = re.match(r'^(\d{1,2})/', raw)
-    if m:
-        return int(m.group(1))
-    # sem barra — pega só os 2 primeiros dígitos (ex: '1911' → dia 19)
-    digits = re.sub(r'\D', '', raw)
-    if digits:
-        return int(digits[:2])
-    return None
-
-
-def _construir_data_por_mes(mes_nome, data_contato_str):
-    """
-    Constrói pd.Timestamp usando:
-    - mes_nome (coluna Mês): fonte confiável para mês + ano
-    - data_contato_str: fonte do dia apenas
-    """
-    mes_num = _mes_nome_para_num(mes_nome)
-    if mes_num is None:
+    if pd.isna(value):
         return pd.NaT
-    # Ano: Novembro/Dezembro = 2025, restante = 2026
-    ano = 2025 if mes_num >= 11 else 2026
-    dia = _extrair_dia(data_contato_str)
-    if dia is None:
-        # sem dia válido, usa dia 1 para manter o mês
-        dia = 1
+
+    raw = re.sub(r"\s+", "", str(value).strip())
+    if not raw:
+        return pd.NaT
+
+    day = None
+    month = None
+
+    match = re.match(r"^(\d{1,2})/(\d{1,2})$", raw)
+    if match:
+        day = int(match.group(1))
+        month = int(match.group(2))
+    else:
+        match = re.match(r"^(\d{1,2})(\d{2})$", raw)
+        if match:
+            day = int(match.group(1))
+            month = int(match.group(2))
+
+    if day is None or month is None or not (1 <= month <= 12):
+        return pd.NaT
+
+    year = 2025 if month >= 11 else 2026
+
     try:
-        return pd.Timestamp(year=ano, month=mes_num, day=dia)
+        return pd.Timestamp(year=year, month=month, day=day)
     except ValueError:
-        # dia inválido para o mês (ex: 31/11) → usa dia 1
         try:
-            return pd.Timestamp(year=ano, month=mes_num, day=1)
+            return pd.Timestamp(year=year, month=month, day=1)
         except Exception:
             return pd.NaT
-
-
-def _infer_default_year(df):
-    return pd.Timestamp.now().year
 
 
 @st.cache_data(ttl=CACHE_TTL)
@@ -234,26 +200,19 @@ def carregar_dados_mestre():
             cols.append(f"{c}_{count[c]}" if count[c] > 1 else c)
         df.columns = cols
 
-        # Processamento de datas usando coluna Mês (confiável) + dia de Data de contato
-        if 'Mês' in df.columns and 'Data de contato' in df.columns:
-            df['Data_Ref'] = df.apply(
-                lambda row: _construir_data_por_mes(row['Mês'], row['Data de contato']),
-                axis=1
-            )
-        elif 'Mês' in df.columns:
-            # sem coluna de dia — usa dia 1
-            df['Data_Ref'] = df['Mês'].apply(
-                lambda m: _construir_data_por_mes(m, '1')
-            )
+        coluna_data_contato = next((c for c in ['Data de contato', 'Data de Contato', 'Data'] if c in df.columns), None)
+        coluna_data_fat = next((c for c in ['Data do Faturamento', 'Data do faturamento'] if c in df.columns), None)
+
+        # Processamento de datas: coluna B (Data de contato) é a fonte principal
+        if coluna_data_contato:
+            df['Data_Ref'] = df[coluna_data_contato].apply(_parse_contact_date)
         else:
             df['Data_Ref'] = pd.NaT
 
         if df['Data_Ref'].notna().any():
             df = df.dropna(subset=['Data_Ref'])
             # Label: 'Nov/25', 'Dez/25', 'Jan/26' ...
-            df['Mes_Ano_Label'] = df['Data_Ref'].apply(
-                lambda d: f"{_LABEL_MES[d.month]}/{str(d.year)[2:]}"
-            )
+            df['Mes_Ano_Label'] = df['Data_Ref'].dt.strftime('%b/%y')
             df['Periodo_Order'] = df['Data_Ref'].dt.to_period('M')
             df = df.sort_values('Data_Ref')
         else:
@@ -288,12 +247,9 @@ def carregar_dados_mestre():
         df = df[df['Origem'] != 'Mídia Offline'].copy()
         
         # Análise de Lag (dias até faturamento)
-        if 'Data do Faturamento' in df.columns and 'Mês' in df.columns:
+        if coluna_data_fat and 'Data_Ref' in df.columns:
             try:
-                df['Data_Fat'] = df.apply(
-                    lambda row: _construir_data_por_mes(row['Mês'], row['Data do Faturamento']),
-                    axis=1
-                )
+                df['Data_Fat'] = df[coluna_data_fat].apply(_parse_contact_date)
                 df['Dias_Lag'] = (df['Data_Fat'] - df['Data_Ref']).dt.days
                 df['Dias_Lag'] = df['Dias_Lag'].apply(lambda x: max(0, x) if pd.notna(x) else None)
             except Exception:
