@@ -61,59 +61,6 @@ st.set_page_config(
 aplicar_css_premium()
 
 # ============================================
-# CONFIG API
-# ============================================
-API_URL = "https://sheet-api-6826756112.us-central1.run.app/data"
-
-
-def _parse_currency_br(value):
-    if pd.isna(value):
-        return 0.0
-    if isinstance(value, (int, float)):
-        return float(value)
-    digits = re.sub(r"[^\d,.-]", "", str(value))
-    if not digits:
-        return 0.0
-    normalized = digits.replace(".", "").replace(",", ".")
-    try:
-        return float(normalized)
-    except ValueError:
-        return 0.0
-
-
-def _parse_contact_date(value):
-    if pd.isna(value):
-        return pd.NaT
-
-    raw = re.sub(r"\s+", "", str(value).strip())
-    if not raw:
-        return pd.NaT
-
-    day = None
-    month = None
-
-    match = re.match(r"^(\d{1,2})/(\d{1,2})$", raw)
-    if match:
-        day = int(match.group(1))
-        month = int(match.group(2))
-    else:
-        match = re.match(r"^(\d{1,2})(\d{2})$", raw)
-        if match:
-            day = int(match.group(1))
-            month = int(match.group(2))
-
-    if day is None or month is None or not (1 <= month <= 12):
-        return pd.NaT
-
-    year = 2025 if month >= 11 else 2026
-
-    try:
-        return pd.Timestamp(year=year, month=month, day=day)
-    except ValueError:
-        try:
-            return pd.Timestamp(year=year, month=month, day=1)
-        except Exception:
-            return pd.NaT
 
 
 def _normalizar_modelo_base(df):
@@ -246,63 +193,6 @@ def gerar_insights_ia(df):
         "profissionais_prioritarios": profissionais_prioritarios,
     }
 
-@st.cache_data(ttl=300)
-def carregar_dados_mestre():
-    try:
-        response = requests.get(API_URL)
-
-        if response.status_code != 200:
-            st.error(f"Erro na API: {response.status_code}")
-            return None
-
-        data = response.json()
-
-        if isinstance(data, dict) and "erro" in data:
-            st.error(f"Erro da API: {data['erro']}")
-            return None
-
-        df = pd.DataFrame(data)
-        df.columns = [str(col).strip() for col in df.columns]
-
-        coluna_data_contato = next((c for c in ["Data de contato", "Data de Contato", "Data"] if c in df.columns), None)
-        coluna_data_fat = next((c for c in ["Data do Faturamento", "Data do faturamento"] if c in df.columns), None)
-
-        # Processamento de datas: coluna B é a fonte principal
-        if not df.empty:
-            if coluna_data_contato:
-                df["Data_Ref"] = df[coluna_data_contato].apply(_parse_contact_date)
-            else:
-                df["Data_Ref"] = pd.NaT
-
-            if coluna_data_fat:
-                df["Data_Fat"] = df[coluna_data_fat].apply(_parse_contact_date)
-
-            df = df.dropna(subset=["Data_Ref"])
-            df = df.sort_values("Data_Ref")
-
-            if "Faturamento" in df.columns:
-                df["Faturamento_Num"] = df["Faturamento"].apply(_parse_currency_br)
-
-            if "Status" in df.columns:
-                status_normalizado = df["Status"].astype(str).str.lower().str.strip()
-                df["is_faturado"] = status_normalizado.eq("faturado")
-                df["is_qualificado"] = status_normalizado.isin(["qualificado", "faturado", "agendamento realizado", "em andamento"])
-
-            if "Qualificação" in df.columns:
-                qualificacao_normalizada = df["Qualificação"].astype(str).str.lower().str.strip()
-                df["is_qualificado"] = qualificacao_normalizada.eq("qualificado") | df.get("is_qualificado", False)
-
-            if "Data_Fat" in df.columns and "Data_Ref" in df.columns:
-                df["Dias_Lag"] = (df["Data_Fat"] - df["Data_Ref"]).dt.days
-                df["Dias_Lag"] = df["Dias_Lag"].apply(lambda value: max(0, value) if pd.notna(value) else None)
-
-        return df
-
-    except Exception as e:
-        st.error(f"Erro ao conectar API: {e}")
-        return None
-
-
 # ============================================
 # IMPORT MODULES
 # ============================================
@@ -368,8 +258,8 @@ if df_raw is not None:
     # ABA 1: DADOS REAIS
     # ==========================================
     with tab_real:
-        meses_real, canais_sel = criar_filtros(df_raw, "real")
-        df_filtrado = construir_df_filtrado(df_raw, meses_real, canais_sel)
+        meses_real, canais_sel, dt_ini, dt_fim = criar_filtros(df_raw, "real")
+        df_filtrado = construir_df_filtrado(df_raw, meses_real, canais_sel, dt_ini, dt_fim)
 
         kpis_atu = calcular_kpis(df_filtrado)
         exibir_kpis_principais(kpis_atu, None)
@@ -401,8 +291,8 @@ if df_raw is not None:
     # ABA 2: PERFORMANCE POR CANAL
     # ==========================================
     with tab_perf:
-        meses_perf, canais_perf = criar_filtros(df_raw, "perf")
-        df_perf = construir_df_filtrado(df_raw, meses_perf, canais_perf)
+        meses_perf, canais_perf, dt_ini_p, dt_fim_p = criar_filtros(df_raw, "perf")
+        df_perf = construir_df_filtrado(df_raw, meses_perf, canais_perf, dt_ini_p, dt_fim_p)
 
         if not df_perf.empty:
             kpis_perf = calcular_kpis(df_perf)
@@ -450,8 +340,8 @@ if df_raw is not None:
     # ABA 3: ANÁLISE POR PROFISSIONAL
     # ==========================================
     with tab_prof:
-        meses_prof, canais_prof = criar_filtros(df_raw, "prof")
-        df_prof_filt = construir_df_filtrado(df_raw, meses_prof, canais_prof)
+        meses_prof, canais_prof, dt_ini_pr, dt_fim_pr = criar_filtros(df_raw, "prof")
+        df_prof_filt = construir_df_filtrado(df_raw, meses_prof, canais_prof, dt_ini_pr, dt_fim_pr)
 
         prof_stats = analisar_profissional(df_prof_filt)
         if prof_stats is not None:
@@ -488,8 +378,8 @@ if df_raw is not None:
     # ABA 4: ANÁLISE DE SERVIÇOS
     # ==========================================
     with tab_servico:
-        meses_serv, canais_serv = criar_filtros(df_raw, "serv")
-        df_serv_filt = construir_df_filtrado(df_raw, meses_serv, canais_serv)
+        meses_serv, canais_serv, dt_ini_s, dt_fim_s = criar_filtros(df_raw, "serv")
+        df_serv_filt = construir_df_filtrado(df_raw, meses_serv, canais_serv, dt_ini_s, dt_fim_s)
 
         servico_stats = analisar_servico(df_serv_filt)
         if servico_stats is not None:

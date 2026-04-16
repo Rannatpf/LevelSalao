@@ -65,89 +65,65 @@ def _parse_currency_br(value):
 
 
 def _parse_contact_date(value):
-    """Converte a coluna B para Timestamp sem perder meses da base."""
+    """Converte 'Data de contato' no formato brasileiro dd/mm/aaaa para Timestamp."""
     if pd.isna(value):
         return pd.NaT
 
+    # Já é datetime/Timestamp
     if isinstance(value, pd.Timestamp):
-        return value.normalize()
+        ts = value
+    elif isinstance(value, datetime):
+        ts = pd.Timestamp(value)
+    elif isinstance(value, date):
+        ts = pd.Timestamp(value)
+    else:
+        ts = None
 
-    if isinstance(value, datetime):
-        return pd.Timestamp(value).normalize()
+    if ts is not None:
+        if ts.year < 2025 or ts.year > 2030:
+            return pd.NaT
+        return ts.normalize()
 
-    if isinstance(value, date):
-        return pd.Timestamp(value).normalize()
-
+    # Serial do Google Sheets (número inteiro representando data)
     if isinstance(value, (int, float)) and not pd.isna(value):
         serial = int(value)
         if 30000 <= serial <= 60000:
-            return (pd.Timestamp("1899-12-30") + pd.to_timedelta(serial, unit="D")).normalize()
+            ts = (pd.Timestamp("1899-12-30") + pd.to_timedelta(serial, unit="D")).normalize()
+            if ts.year < 2025 or ts.year > 2030:
+                return pd.NaT
+            return ts
 
     raw = re.sub(r"\s+", "", str(value).strip())
     if not raw:
         return pd.NaT
 
+    # Formato principal: dd/mm/aaaa ou dd-mm-aaaa
     match = re.match(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$", raw)
     if match:
-        first = int(match.group(1))
-        second = int(match.group(2))
-        third = int(match.group(3))
+        day = int(match.group(1))
+        month = int(match.group(2))
+        year = int(match.group(3))
 
-        if len(match.group(3)) == 4:
-            if first > 12 and second <= 12:
-                day, month, year = first, second, third
-            elif second > 12 and first <= 12:
-                day, month, year = second, first, third
-            else:
-                day, month, year = first, second, third
-        else:
-            year = 2000 + third if third < 100 else third
-            if first > 12 and second <= 12:
-                day, month = first, second
-            elif second > 12 and first <= 12:
-                day, month = second, first
-            else:
-                day, month = first, second
+        if year < 100:
+            year = 2000 + year
 
-        try:
-            return pd.Timestamp(year=year, month=month, day=day)
-        except ValueError:
-            try:
-                return pd.Timestamp(year=year, month=month, day=1)
-            except Exception:
-                return pd.NaT
-
-    match = re.match(r"^(\d{1,2})[/-](\d{1,2})$", raw)
-    if match:
-        first = int(match.group(1))
-        second = int(match.group(2))
-
-        if first > 12 and second <= 12:
-            day, month = first, second
-        elif second > 12 and first <= 12:
-            day, month = second, first
-        else:
-            day, month = first, second
-
-        if not (1 <= month <= 12):
+        if year < 2025 or year > 2030:
+            return pd.NaT
+        if not (1 <= month <= 12 and 1 <= day <= 31):
             return pd.NaT
 
-        year = 2025 if month >= 11 else 2026
-
         try:
             return pd.Timestamp(year=year, month=month, day=day)
         except ValueError:
-            try:
-                return pd.Timestamp(year=year, month=month, day=1)
-            except Exception:
-                return pd.NaT
+            return pd.NaT
 
-    match = re.match(r"^(\d{1,2})(\d{2})$", raw)
+    # Formato incompleto: dd/mm (sem ano) — inferir ano
+    match = re.match(r"^(\d{1,2})[/-](\d{1,2})$", raw)
     if match:
         day = int(match.group(1))
         month = int(match.group(2))
 
-        if not (1 <= month <= 12):
+        if not (1 <= month <= 12 and 1 <= day <= 31):
             return pd.NaT
 
         year = 2025 if month >= 11 else 2026
@@ -155,14 +131,15 @@ def _parse_contact_date(value):
         try:
             return pd.Timestamp(year=year, month=month, day=day)
         except ValueError:
-            try:
-                return pd.Timestamp(year=year, month=month, day=1)
-            except Exception:
-                return pd.NaT
+            return pd.NaT
 
+    # Fallback genérico (dayfirst para formato BR)
     parsed = pd.to_datetime(raw, errors="coerce", dayfirst=True)
     if not pd.isna(parsed):
-        return pd.Timestamp(parsed).normalize()
+        ts = pd.Timestamp(parsed).normalize()
+        if ts.year < 2025 or ts.year > 2030:
+            return pd.NaT
+        return ts
 
     return pd.NaT
 
@@ -173,6 +150,38 @@ _ORDEM_MESES = [
     "Janeiro", "Fevereiro", "Março", "Abril",
     "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro",
 ]
+
+# Mapa de normalização: variantes encontradas na planilha → nome canônico
+_NORMALIZE_MES = {
+    "novembro": "Novembro",
+    "dezembro": "Dezembro",
+    "janeiro": "Janeiro",
+    "fevereiro": "Fevereiro",
+    "março": "Março",
+    "marco": "Março",
+    "abril": "Abril",
+    "maio": "Maio",
+    "junho": "Junho",
+    "julho": "Julho",
+    "agosto": "Agosto",
+    "setembro": "Setembro",
+    "outubro": "Outubro",
+}
+
+
+def _normalizar_mes(valor):
+    """Normaliza nomes de meses: remove espaços, acentos inconsistentes, capitaliza."""
+    if pd.isna(valor):
+        return valor
+    chave = str(valor).strip().lower()
+    return _NORMALIZE_MES.get(chave, str(valor).strip().title())
+
+
+# URL CSV direto do Google Sheets (fallback sem credenciais)
+_CSV_EXPORT_URL = (
+    f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEETS_ID}"
+    f"/gviz/tq?tqx=out:csv&sheet=Contatos"
+)
 
 
 @st.cache_data(ttl=CACHE_TTL)
@@ -239,21 +248,34 @@ def carregar_dados_mestre():
         
         # ERRO: Nenhuma fonte de credenciais funcionou
         if creds is None:
-            log_info("Nenhuma credencial local encontrada. Usando API pública como fallback.")
+            log_info("Nenhuma credencial local encontrada. Usando CSV direto do Google Sheets como fallback.")
 
             try:
-                response = requests.get(API_URL, timeout=60)
+                import io
+                response = requests.get(_CSV_EXPORT_URL, timeout=60)
                 if response.status_code != 200:
-                    st.error(f"Erro na API: {response.status_code}")
+                    st.error(f"Erro ao acessar planilha: {response.status_code}")
                     return None
 
-                data = response.json()
-                if isinstance(data, dict) and "erro" in data:
-                    st.error(f"Erro da API: {data['erro']}")
-                    return None
-
-                df = pd.DataFrame(data)
+                df = pd.read_csv(io.StringIO(response.text))
+                # Manter apenas as 11 colunas principais
+                colunas_esperadas = [
+                    'Mês', 'Data de contato', 'Nome', 'Whatsapp', 'Origem',
+                    'Status', 'Qualificação', 'Data do Faturamento', 'Serviço',
+                    'Profissional', 'Faturamento'
+                ]
+                colunas_presentes = [c for c in colunas_esperadas if c in df.columns]
+                df = df[colunas_presentes].copy()
                 df.columns = [str(col).strip() for col in df.columns]
+
+                # Normalizar coluna Mês
+                if 'Mês' in df.columns:
+                    df['Mês'] = df['Mês'].apply(_normalizar_mes)
+
+                # Remover linhas sem nome (linhas vazias da planilha)
+                if 'Nome' in df.columns:
+                    df = df.dropna(subset=['Nome'])
+                    df = df[df['Nome'].astype(str).str.strip() != ''].copy()
 
                 coluna_data_contato = next((c for c in ['Data de contato', 'Data de Contato', 'Data'] if c in df.columns), None)
                 coluna_data_fat = next((c for c in ['Data do Faturamento', 'Data do faturamento'] if c in df.columns), None)
@@ -303,6 +325,7 @@ def carregar_dados_mestre():
                         if column not in df.columns:
                             df[column] = pd.Series(dtype='object')
 
+                log_info(f"✓ Dados carregados via CSV direto: {len(df)} linhas")
                 return df
 
             except Exception as e:
@@ -339,6 +362,14 @@ def carregar_dados_mestre():
             count[c] = count.get(c, 0) + 1
             cols.append(f"{c}_{count[c]}" if count[c] > 1 else c)
         df.columns = cols
+
+        # Normalizar coluna Mês (corrigir minúsculas, espaços, acentos)
+        if 'Mês' in df.columns:
+            df['Mês'] = df['Mês'].apply(_normalizar_mes)
+
+        # Remover linhas sem nome (linhas vazias da planilha)
+        if 'Nome' in df.columns:
+            df = df[df['Nome'].astype(str).str.strip() != ''].copy()
 
         coluna_data_contato = next((c for c in ['Data de contato', 'Data de Contato', 'Data'] if c in df.columns), None)
         coluna_data_fat = next((c for c in ['Data do Faturamento', 'Data do faturamento'] if c in df.columns), None)
@@ -438,16 +469,14 @@ def calcular_kpis(df):
 
 
 def criar_filtros(df, chave_unica):
-    """Filtros por mês (coluna Mês da planilha) e canal de aquisição."""
-    col_f1, col_f2 = st.columns([1, 2])
+    """Filtros por mês, intervalo de datas e canal de aquisição."""
+    col_f1, col_f2, col_f3 = st.columns([1, 1, 2])
 
-    # Usar coluna "Mês" da planilha diretamente
+    # --- Filtro de Mês ---
     if 'Mês' in df.columns:
         meses_na_base = df['Mês'].dropna().astype(str).str.strip()
         meses_na_base = meses_na_base[meses_na_base != ''].unique().tolist()
-        # Ordenar na sequência cronológica da planilha
         meses_ordenados = [m for m in _ORDEM_MESES if m in meses_na_base]
-        # Caso haja algum mês fora do mapeamento, adicionar no final
         for m in meses_na_base:
             if m not in meses_ordenados:
                 meses_ordenados.append(m)
@@ -461,28 +490,55 @@ def criar_filtros(df, chave_unica):
     else:
         meses_sel = []
 
+    # --- Filtro de Calendário (intervalo de datas) ---
+    data_inicio = None
+    data_fim = None
+    if 'Data_Ref' in df.columns and df['Data_Ref'].notna().any():
+        data_min = df['Data_Ref'].min().date()
+        data_max = df['Data_Ref'].max().date()
+        intervalo = col_f2.date_input(
+            '📅 Intervalo de datas',
+            value=(data_min, data_max),
+            min_value=data_min,
+            max_value=data_max,
+            key=f'datas_{chave_unica}',
+        )
+        if isinstance(intervalo, (list, tuple)) and len(intervalo) == 2:
+            data_inicio, data_fim = intervalo
+        elif isinstance(intervalo, (list, tuple)) and len(intervalo) == 1:
+            data_inicio = data_fim = intervalo[0]
+
+    # --- Filtro de Canal ---
     canais_disponiveis = sorted(df['Origem'].fillna('Desconhecida').unique().tolist())
-    canais_sel = col_f2.multiselect(
+    canais_sel = col_f3.multiselect(
         'Canais de Aquisição',
         options=canais_disponiveis,
         default=canais_disponiveis,
         key=f'canais_{chave_unica}',
     )
 
-    return meses_sel, canais_sel
+    return meses_sel, canais_sel, data_inicio, data_fim
 
 
-def construir_df_filtrado(df_raw, meses_selecionados, canais_selecionados):
-    """Filtra pela coluna Mês da planilha e por canal de aquisição."""
+def construir_df_filtrado(df_raw, meses_selecionados, canais_selecionados,
+                          data_inicio=None, data_fim=None):
+    """Filtra por mês, intervalo de datas e canal de aquisição."""
     if df_raw.empty:
         return df_raw.iloc[0:0].copy()
 
     if not meses_selecionados:
         return df_raw.iloc[0:0].copy()
 
-    # Filtrar pelo nome do mês que vem direto da planilha
+    # Filtrar pelo nome do mês
     mes_col = df_raw['Mês'].astype(str).str.strip() if 'Mês' in df_raw.columns else pd.Series(dtype=str)
     df_filtrado = df_raw[mes_col.isin(meses_selecionados)].copy()
+
+    # Filtrar pelo intervalo de datas
+    if data_inicio and data_fim and 'Data_Ref' in df_filtrado.columns:
+        ts_inicio = pd.Timestamp(data_inicio)
+        ts_fim = pd.Timestamp(data_fim)
+        mask = df_filtrado['Data_Ref'].notna() & (df_filtrado['Data_Ref'] >= ts_inicio) & (df_filtrado['Data_Ref'] <= ts_fim)
+        df_filtrado = df_filtrado[mask].copy()
 
     if canais_selecionados:
         df_filtrado = df_filtrado[df_filtrado['Origem'].isin(canais_selecionados)].copy()
