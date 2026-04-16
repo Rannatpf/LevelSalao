@@ -258,8 +258,8 @@ if df_raw is not None:
     # ABA 1: DADOS REAIS
     # ==========================================
     with tab_real:
-        meses_real, canais_sel, dt_ini, dt_fim = criar_filtros(df_raw, "real")
-        df_filtrado = construir_df_filtrado(df_raw, meses_real, canais_sel, dt_ini, dt_fim)
+        meses_real, canais_sel = criar_filtros(df_raw, "real")
+        df_filtrado = construir_df_filtrado(df_raw, meses_real, canais_sel)
 
         kpis_atu = calcular_kpis(df_filtrado)
         exibir_kpis_principais(kpis_atu, None)
@@ -291,8 +291,8 @@ if df_raw is not None:
     # ABA 2: PERFORMANCE POR CANAL
     # ==========================================
     with tab_perf:
-        meses_perf, canais_perf, dt_ini_p, dt_fim_p = criar_filtros(df_raw, "perf")
-        df_perf = construir_df_filtrado(df_raw, meses_perf, canais_perf, dt_ini_p, dt_fim_p)
+        meses_perf, canais_perf = criar_filtros(df_raw, "perf")
+        df_perf = construir_df_filtrado(df_raw, meses_perf, canais_perf)
 
         if not df_perf.empty:
             kpis_perf = calcular_kpis(df_perf)
@@ -340,8 +340,8 @@ if df_raw is not None:
     # ABA 3: ANÁLISE POR PROFISSIONAL
     # ==========================================
     with tab_prof:
-        meses_prof, canais_prof, dt_ini_pr, dt_fim_pr = criar_filtros(df_raw, "prof")
-        df_prof_filt = construir_df_filtrado(df_raw, meses_prof, canais_prof, dt_ini_pr, dt_fim_pr)
+        meses_prof, canais_prof = criar_filtros(df_raw, "prof")
+        df_prof_filt = construir_df_filtrado(df_raw, meses_prof, canais_prof)
 
         prof_stats = analisar_profissional(df_prof_filt)
         if prof_stats is not None:
@@ -378,8 +378,8 @@ if df_raw is not None:
     # ABA 4: ANÁLISE DE SERVIÇOS
     # ==========================================
     with tab_servico:
-        meses_serv, canais_serv, dt_ini_s, dt_fim_s = criar_filtros(df_raw, "serv")
-        df_serv_filt = construir_df_filtrado(df_raw, meses_serv, canais_serv, dt_ini_s, dt_fim_s)
+        meses_serv, canais_serv = criar_filtros(df_raw, "serv")
+        df_serv_filt = construir_df_filtrado(df_raw, meses_serv, canais_serv)
 
         servico_stats = analisar_servico(df_serv_filt)
         if servico_stats is not None:

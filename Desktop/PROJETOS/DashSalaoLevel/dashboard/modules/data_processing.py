@@ -258,6 +258,8 @@ def carregar_dados_mestre():
                     return None
 
                 df = pd.read_csv(io.StringIO(response.text))
+                # Normalizar nomes de colunas (remover espaços)
+                df.columns = [str(col).strip() for col in df.columns]
                 # Manter apenas as 11 colunas principais
                 colunas_esperadas = [
                     'Mês', 'Data de contato', 'Nome', 'Whatsapp', 'Origem',
@@ -266,7 +268,6 @@ def carregar_dados_mestre():
                 ]
                 colunas_presentes = [c for c in colunas_esperadas if c in df.columns]
                 df = df[colunas_presentes].copy()
-                df.columns = [str(col).strip() for col in df.columns]
 
                 # Normalizar coluna Mês
                 if 'Mês' in df.columns:
@@ -354,6 +355,9 @@ def carregar_dados_mestre():
         
         raw_values = sheet.get_all_values()
         df = pd.DataFrame(raw_values[1:], columns=raw_values[0])
+
+        # Normalizar nomes de colunas (remover espaços)
+        df.columns = [str(col).strip() for col in df.columns]
 
         # Limpeza de nomes de colunas duplicados
         cols = []
@@ -469,8 +473,8 @@ def calcular_kpis(df):
 
 
 def criar_filtros(df, chave_unica):
-    """Filtros por mês, intervalo de datas e canal de aquisição."""
-    col_f1, col_f2, col_f3 = st.columns([1, 1, 2])
+    """Filtros por mês e canal de aquisição."""
+    col_f1, col_f2 = st.columns(2)
 
     # --- Filtro de Mês ---
     if 'Mês' in df.columns:
@@ -490,39 +494,20 @@ def criar_filtros(df, chave_unica):
     else:
         meses_sel = []
 
-    # --- Filtro de Calendário (intervalo de datas) ---
-    data_inicio = None
-    data_fim = None
-    if 'Data_Ref' in df.columns and df['Data_Ref'].notna().any():
-        data_min = df['Data_Ref'].min().date()
-        data_max = df['Data_Ref'].max().date()
-        intervalo = col_f2.date_input(
-            '📅 Intervalo de datas',
-            value=(data_min, data_max),
-            min_value=data_min,
-            max_value=data_max,
-            key=f'datas_{chave_unica}',
-        )
-        if isinstance(intervalo, (list, tuple)) and len(intervalo) == 2:
-            data_inicio, data_fim = intervalo
-        elif isinstance(intervalo, (list, tuple)) and len(intervalo) == 1:
-            data_inicio = data_fim = intervalo[0]
-
     # --- Filtro de Canal ---
     canais_disponiveis = sorted(df['Origem'].fillna('Desconhecida').unique().tolist())
-    canais_sel = col_f3.multiselect(
+    canais_sel = col_f2.multiselect(
         'Canais de Aquisição',
         options=canais_disponiveis,
         default=canais_disponiveis,
         key=f'canais_{chave_unica}',
     )
 
-    return meses_sel, canais_sel, data_inicio, data_fim
+    return meses_sel, canais_sel
 
 
-def construir_df_filtrado(df_raw, meses_selecionados, canais_selecionados,
-                          data_inicio=None, data_fim=None):
-    """Filtra por mês, intervalo de datas e canal de aquisição."""
+def construir_df_filtrado(df_raw, meses_selecionados, canais_selecionados):
+    """Filtra por mês e canal de aquisição."""
     if df_raw.empty:
         return df_raw.iloc[0:0].copy()
 
@@ -532,13 +517,6 @@ def construir_df_filtrado(df_raw, meses_selecionados, canais_selecionados,
     # Filtrar pelo nome do mês
     mes_col = df_raw['Mês'].astype(str).str.strip() if 'Mês' in df_raw.columns else pd.Series(dtype=str)
     df_filtrado = df_raw[mes_col.isin(meses_selecionados)].copy()
-
-    # Filtrar pelo intervalo de datas
-    if data_inicio and data_fim and 'Data_Ref' in df_filtrado.columns:
-        ts_inicio = pd.Timestamp(data_inicio)
-        ts_fim = pd.Timestamp(data_fim)
-        mask = df_filtrado['Data_Ref'].notna() & (df_filtrado['Data_Ref'] >= ts_inicio) & (df_filtrado['Data_Ref'] <= ts_fim)
-        df_filtrado = df_filtrado[mask].copy()
 
     if canais_selecionados:
         df_filtrado = df_filtrado[df_filtrado['Origem'].isin(canais_selecionados)].copy()
