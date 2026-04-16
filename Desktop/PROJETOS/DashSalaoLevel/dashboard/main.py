@@ -204,7 +204,6 @@ from modules import (
     criar_filtros,
     construir_df_filtrado,
     analisar_performance_canais,
-    analisar_profissional,
     analisar_servico,
     calcular_lag_medio,
     criar_grafico_pizza,
@@ -241,10 +240,9 @@ if df_raw is not None:
         logo_path=logo_path
     )
 
-    tab_real, tab_perf, tab_prof, tab_servico, tab_proj = st.tabs([
+    tab_real, tab_perf, tab_servico, tab_proj = st.tabs([
         "📊 Histórico Real",
         "🎯 Performance Canais",
-        "👥 Profissionais",
         "💇 Serviços & Produtos",
         "🔮 Simulador"
     ])
@@ -323,6 +321,69 @@ if df_raw is not None:
                 exibir_analise_dual("📈 Conversão por Canal", fig_conv, "💰 Faturamento por Canal", fig_fat)
 
                 st.divider()
+
+                # --- Evolução mensal por canal ---
+                st.subheader("📈 Evolução Mensal por Canal")
+                _ORDEM_MESES = [
+                    "Novembro", "Dezembro", "Janeiro", "Fevereiro",
+                    "Março", "Abril", "Maio", "Junho",
+                    "Julho", "Agosto", "Setembro", "Outubro",
+                ]
+                evo = df_perf.groupby(['Mês', 'Origem']).agg(
+                    Leads=('Nome', 'count'),
+                    Faturados=('is_faturado', 'sum'),
+                    Faturamento=('Faturamento_Num', 'sum'),
+                ).reset_index()
+                evo['Taxa_Conv'] = (evo['Faturados'] / evo['Leads'] * 100).round(1)
+                evo['Receita_por_Lead'] = (evo['Faturamento'] / evo['Leads']).round(2)
+                meses_presentes = [m for m in _ORDEM_MESES if m in evo['Mês'].values]
+                evo['Mês'] = pd.Categorical(evo['Mês'], categories=meses_presentes, ordered=True)
+                evo = evo.sort_values('Mês')
+
+                col_evo1, col_evo2 = st.columns(2)
+                with col_evo1:
+                    st.markdown("**Leads por Mês**")
+                    fig_leads_evo = px.line(
+                        evo, x='Mês', y='Leads', color='Origem',
+                        markers=True, text='Leads',
+                        color_discrete_sequence=px.colors.sequential.Brwnyl,
+                    )
+                    fig_leads_evo.update_traces(textposition='top center')
+                    fig_leads_evo.update_layout(template='plotly_white', height=350, title='')
+                    st.plotly_chart(fig_leads_evo, use_container_width=True)
+
+                with col_evo2:
+                    st.markdown("**Taxa de Conversão por Mês (%)**")
+                    fig_conv_evo = px.line(
+                        evo, x='Mês', y='Taxa_Conv', color='Origem',
+                        markers=True, text='Taxa_Conv',
+                        color_discrete_sequence=px.colors.sequential.Brwnyl,
+                    )
+                    fig_conv_evo.update_traces(textposition='top center')
+                    fig_conv_evo.update_layout(template='plotly_white', height=350, title='')
+                    st.plotly_chart(fig_conv_evo, use_container_width=True)
+
+                # --- Receita por Lead por Canal ---
+                st.divider()
+                st.subheader("💵 Receita por Lead (Faturamento ÷ Leads)")
+                rpl = canal_perf.copy()
+                rpl['Receita_por_Lead'] = (rpl['Fat_Total'] / rpl['Leads']).round(2)
+                rpl = rpl.sort_values('Receita_por_Lead', ascending=True)
+
+                fig_rpl = px.bar(
+                    rpl, y='Origem', x='Receita_por_Lead',
+                    orientation='h', text_auto='.2f',
+                    color='Receita_por_Lead',
+                    color_continuous_scale='Brwnyl',
+                )
+                fig_rpl.update_layout(
+                    template='plotly_white', height=350, title='',
+                    xaxis_title='R$ por Lead', yaxis_title='',
+                    showlegend=False,
+                )
+                st.plotly_chart(fig_rpl, use_container_width=True)
+
+                st.divider()
                 st.subheader("📊 Ranking por Impacto")
                 exibir_tabela_formatada(
                     canal_perf[['Origem', 'Leads', 'Conversoes', 'Taxa_Conv_Pct', 'Fat_Total']],
@@ -332,45 +393,7 @@ if df_raw is not None:
             st.warning("⚠️ Nenhum dado para o período selecionado")
 
     # ==========================================
-    # ABA 3: ANÁLISE POR PROFISSIONAL
-    # ==========================================
-    with tab_prof:
-        meses_prof, canais_prof = criar_filtros(df_raw, "prof")
-        df_prof_filt = construir_df_filtrado(df_raw, meses_prof, canais_prof)
-
-        prof_stats = analisar_profissional(df_prof_filt)
-        if prof_stats is not None:
-            st.subheader("👥 Performance por Profissional")
-
-            fig_prof_conv = criar_grafico_barras_vertical(
-                dados=prof_stats.nlargest(10, 'Taxa_Conv_Pct'),
-                x_col='Profissional',
-                y_col='Taxa_Conv_Pct',
-                cor_col='Taxa_Conv_Pct',
-                titulo="Top Profissionais - Taxa de Conversão"
-            )
-
-            fig_prof_fat = criar_grafico_barras_vertical(
-                dados=prof_stats.nlargest(10, 'Fat_Total'),
-                x_col='Profissional',
-                y_col='Fat_Total',
-                cor_col='Fat_Total',
-                titulo="Faturamento por Profissional"
-            )
-
-            exibir_analise_dual("Taxa de Conversão", fig_prof_conv, "Faturamento", fig_prof_fat)
-
-            st.divider()
-            st.markdown("**Tabela Completa**")
-            exibir_tabela_formatada(
-                prof_stats,
-                formatos_monetarios=['Fat_Total', 'Ticket_Medio']
-            )
-        else:
-            st.info("📊 Dados de Profissional não disponíveis neste período")
-
-    # ==========================================
-    # ABA 4: ANÁLISE DE SERVIÇOS
+    # ABA 3: ANÁLISE DE SERVIÇOS
     # ==========================================
     with tab_servico:
         meses_serv, canais_serv = criar_filtros(df_raw, "serv")
