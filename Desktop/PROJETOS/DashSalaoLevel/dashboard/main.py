@@ -307,7 +307,7 @@ if df_raw is not None:
                     size_col='Conversoes',
                     hover_col='Origem',
                     cor_col='Taxa_Conv_Pct',
-                    titulo="Conversão por Canal (Volume-Ponderada)"
+                    titulo=""
                 )
 
                 fig_fat = criar_grafico_barras_horizontal(
@@ -315,7 +315,7 @@ if df_raw is not None:
                     y_col='Origem',
                     x_col='Fat_Total',
                     cor_col='Taxa_Conv_Pct',
-                    titulo="Faturamento por Canal"
+                    titulo=""
                 )
 
                 exibir_analise_dual("📈 Conversão por Canal", fig_conv, "💰 Faturamento por Canal", fig_fat)
@@ -409,7 +409,7 @@ if df_raw is not None:
                 y_col='Quantidade',
                 cor_col='Quantidade',
                 cor_escala='Oranges',
-                titulo="Top Serviços - Quantidade"
+                titulo=""
             )
 
             fig_serv_pizza = criar_grafico_pizza(
