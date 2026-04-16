@@ -137,11 +137,14 @@ def exibir_header(titulo, subtitulo, logo_path=None):
         subtitulo (str): Subtítulo
         logo_path (str): Caminho do logo (opcional)
     """
-    col_h1, col_h2 = st.columns([4, 1])
-    with col_h1:
+    if logo_path:
+        col_logo, col_texto = st.columns([0.6, 5])
+        with col_logo:
+            st.image(logo_path, width=60)
+        with col_texto:
+            st.title(titulo)
+            st.caption(subtitulo)
+    else:
         st.title(titulo)
         st.caption(subtitulo)
-    with col_h2:
-        if logo_path:
-            st.image(logo_path, width=120)
     st.divider()
