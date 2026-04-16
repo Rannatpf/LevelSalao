@@ -34,7 +34,7 @@ def criar_grafico_pizza(dados, nomes_col, valores_col, titulo="", cor_paleta="Br
     fig.update_layout(
         template="plotly_white",
         height=350,
-        title=titulo if titulo else None
+        title=titulo or ""
     )
     return fig
 
@@ -187,7 +187,7 @@ def criar_grafico_funil(categorias, valores, cores=None, titulo=""):
     fig.update_layout(
         template="plotly_white",
         height=350,
-        title=titulo if titulo else None
+        title=titulo or ""
     )
     return fig
 
@@ -248,6 +248,6 @@ def criar_grafico_radar(valores, categorias, titulo="", cor="rgba(212, 163, 115,
     fig.update_layout(
         polar=dict(radialaxis=dict(visible=True, range=[0, max(valores)])),
         height=400,
-        title=titulo if titulo else None
+        title=titulo or ""
     )
     return fig
