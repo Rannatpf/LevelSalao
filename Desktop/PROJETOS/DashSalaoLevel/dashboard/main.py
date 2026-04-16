@@ -215,15 +215,11 @@ from modules import (
     criar_grafico_funil,
     criar_grafico_gauge,
     criar_grafico_radar,
-    gerar_alertas_criticos,
-    gerar_recomendacoes_ia,
     calcular_receita_pendente,
     exibir_kpis_principais,
     exibir_kpis_secundarios,
     exibir_analise_dual,
     exibir_tabela_formatada,
-    exibir_alertas,
-    exibir_recomendacoes,
     exibir_header
 )
 
@@ -245,12 +241,11 @@ if df_raw is not None:
         logo_path=logo_path
     )
 
-    tab_real, tab_perf, tab_prof, tab_servico, tab_alertas, tab_proj = st.tabs([
+    tab_real, tab_perf, tab_prof, tab_servico, tab_proj = st.tabs([
         "📊 Histórico Real",
         "🎯 Performance Canais",
         "👥 Profissionais",
         "💇 Serviços & Produtos",
-        "⚠️ Alertas & IA",
         "🔮 Simulador"
     ])
 
@@ -432,73 +427,7 @@ if df_raw is not None:
             st.info("📊 Dados de Serviço não disponíveis neste período")
 
     # ==========================================
-    # ABA 5: ALERTAS & IA
-    # ==========================================
-    with tab_alertas:
-        st.header("🤖 Sistema de Alertas Inteligentes")
-
-        alertas_list = gerar_alertas_criticos(df_raw)
-        exibir_alertas(alertas_list)
-
-        st.divider()
-        st.header("💡 Recomendações de IA")
-
-        recomendacoes = gerar_recomendacoes_ia(df_raw)
-        exibir_recomendacoes(recomendacoes)
-
-        st.divider()
-        st.header("🧠 Inteligência de Conversão")
-
-        insights_ia = gerar_insights_ia(df_raw)
-        if insights_ia is None:
-            st.info("Base ainda pequena demais para treinar um modelo confiável. Continue alimentando a planilha para liberar os insights de IA.")
-        else:
-            metrics = insights_ia["metrics"]
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Acurácia", f"{metrics['accuracy']:.1%}")
-            col2.metric("Precisão", f"{metrics['precision']:.1%}")
-            col3.metric("Recall", f"{metrics['recall']:.1%}")
-            col4.metric("Receita esperada", formatar_moeda_br(metrics["receita_esperada"]))
-
-            st.markdown("### Variáveis que mais explicam a conversão")
-            fig_importancia = px.bar(
-                insights_ia["importancias"],
-                x="Importancia",
-                y="Variavel",
-                orientation="h",
-                text_auto=".2f",
-                title="Importância das variáveis no modelo"
-            )
-            fig_importancia.update_layout(height=420, template="plotly_white")
-            st.plotly_chart(fig_importancia, use_container_width=True)
-
-            st.markdown("### Prioridade de follow-up")
-            leads_pendentes = insights_ia["leads_pendentes"]
-            if leads_pendentes.empty:
-                st.success("Não há leads pendentes com score calculado no momento.")
-            else:
-                colunas_exibicao = [c for c in ["Nome", "Origem", "Qualificação", "Serviço", "Profissional", "Prob_Conversao"] if c in leads_pendentes.columns]
-                tabela_ia = leads_pendentes[colunas_exibicao].head(15).copy()
-                if "Prob_Conversao" in tabela_ia.columns:
-                    tabela_ia["Prob_Conversao"] = (tabela_ia["Prob_Conversao"] * 100).round(1).astype(str) + "%"
-                st.dataframe(tabela_ia, use_container_width=True, hide_index=True)
-
-            canais_prioritarios = insights_ia["canais_prioritarios"]
-            profissionais_prioritarios = insights_ia["profissionais_prioritarios"]
-            if not canais_prioritarios.empty or not profissionais_prioritarios.empty:
-                st.markdown("### Canais e profissionais prioritários")
-                col_prior_1, col_prior_2 = st.columns(2)
-                with col_prior_1:
-                    if not canais_prioritarios.empty:
-                        st.caption("Canais com maior score médio de conversão")
-                        st.dataframe(canais_prioritarios.head(8), use_container_width=True, hide_index=True)
-                with col_prior_2:
-                    if not profissionais_prioritarios.empty:
-                        st.caption("Profissionais com maior score médio de conversão")
-                        st.dataframe(profissionais_prioritarios.head(8), use_container_width=True, hide_index=True)
-
-    # ==========================================
-    # ABA 6: SIMULADOR
+    # ABA 5: SIMULADOR
     # ==========================================
     with tab_proj:
         st.header("🔮 Simulador de Escala Estratégica")
