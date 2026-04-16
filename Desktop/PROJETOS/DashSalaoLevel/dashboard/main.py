@@ -278,14 +278,7 @@ def carregar_dados_mestre():
                 df["Data_Fat"] = df[coluna_data_fat].apply(_parse_contact_date)
 
             df = df.dropna(subset=["Data_Ref"])
-
-            if "Data_Ref" in df.columns and df["Data_Ref"].notna().any():
-                df["Mes_Ano_Label"] = df["Data_Ref"].dt.strftime("%b/%y")
-                df["Periodo_Order"] = df["Data_Ref"].dt.to_period("M")
-                df = df.sort_values("Data_Ref")
-            else:
-                df["Mes_Ano_Label"] = "Sem período"
-                df["Periodo_Order"] = pd.RangeIndex(start=0, stop=len(df), step=1)
+            df = df.sort_values("Data_Ref")
 
             if "Faturamento" in df.columns:
                 df["Faturamento_Num"] = df["Faturamento"].apply(_parse_currency_br)
@@ -316,6 +309,7 @@ def carregar_dados_mestre():
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
 from modules import (
     formatar_moeda_br,
+    carregar_dados_mestre as carregar_dados_mestre_mod,
     calcular_kpis,
     criar_filtros,
     construir_df_filtrado,
@@ -346,18 +340,11 @@ from modules import (
 # ============================================
 # CARREGAMENTO
 # ============================================
-df_raw = carregar_dados_mestre()
+df_raw = carregar_dados_mestre_mod()
 
 if df_raw is not None:
-    if {'Periodo_Order', 'Mes_Ano_Label'}.issubset(df_raw.columns):
-        periodos_df = df_raw[['Periodo_Order', 'Mes_Ano_Label']].drop_duplicates().sort_values('Periodo_Order')
-        lista_labels = periodos_df['Mes_Ano_Label'].tolist()
-    else:
-        periodos_df = pd.DataFrame(columns=['Periodo_Order', 'Mes_Ano_Label'])
-        lista_labels = []
-
-    if not lista_labels:
-        st.warning('Nenhum período disponível na base carregada.')
+    if 'Data_Ref' not in df_raw.columns or df_raw['Data_Ref'].notna().sum() == 0:
+        st.warning('Nenhuma data disponível na base carregada.')
         st.stop()
 
     logo_path = resolver_logo_path()
@@ -381,20 +368,11 @@ if df_raw is not None:
     # ABA 1: DADOS REAIS
     # ==========================================
     with tab_real:
-        meses_sel, canais_sel = criar_filtros(df_raw, lista_labels, "real")
-        df_filtrado = construir_df_filtrado(df_raw, meses_sel, canais_sel)
+        meses_real, canais_sel = criar_filtros(df_raw, "real")
+        df_filtrado = construir_df_filtrado(df_raw, meses_real, canais_sel)
 
         kpis_atu = calcular_kpis(df_filtrado)
-        kpis_ant = None
-        if meses_sel:
-            try:
-                idx_ant = lista_labels.index(meses_sel[0]) - 1
-                df_ant = df_raw[df_raw['Mes_Ano_Label'] == lista_labels[idx_ant]] if idx_ant >= 0 else pd.DataFrame()
-                kpis_ant = calcular_kpis(df_ant)
-            except ValueError:
-                kpis_ant = None
-
-        exibir_kpis_principais(kpis_atu, kpis_ant)
+        exibir_kpis_principais(kpis_atu, None)
         st.divider()
 
         if not df_filtrado.empty:
@@ -423,7 +401,7 @@ if df_raw is not None:
     # ABA 2: PERFORMANCE POR CANAL
     # ==========================================
     with tab_perf:
-        meses_perf, canais_perf = criar_filtros(df_raw, lista_labels, "perf")
+        meses_perf, canais_perf = criar_filtros(df_raw, "perf")
         df_perf = construir_df_filtrado(df_raw, meses_perf, canais_perf)
 
         if not df_perf.empty:
@@ -472,7 +450,7 @@ if df_raw is not None:
     # ABA 3: ANÁLISE POR PROFISSIONAL
     # ==========================================
     with tab_prof:
-        meses_prof, canais_prof = criar_filtros(df_raw, lista_labels, "prof")
+        meses_prof, canais_prof = criar_filtros(df_raw, "prof")
         df_prof_filt = construir_df_filtrado(df_raw, meses_prof, canais_prof)
 
         prof_stats = analisar_profissional(df_prof_filt)
@@ -510,7 +488,7 @@ if df_raw is not None:
     # ABA 4: ANÁLISE DE SERVIÇOS
     # ==========================================
     with tab_servico:
-        meses_serv, canais_serv = criar_filtros(df_raw, lista_labels, "serv")
+        meses_serv, canais_serv = criar_filtros(df_raw, "serv")
         df_serv_filt = construir_df_filtrado(df_raw, meses_serv, canais_serv)
 
         servico_stats = analisar_servico(df_serv_filt)
@@ -635,8 +613,8 @@ if df_raw is not None:
     with tab_proj:
         st.header("🔮 Simulador de Escala Estratégica")
 
-        ultimo_mes = lista_labels[-1]
-        df_base = df_raw[df_raw['Mes_Ano_Label'] == ultimo_mes]
+        ultimo_mes = df_raw['Data_Ref'].max().to_period('M')
+        df_base = df_raw[df_raw['Data_Ref'].dt.to_period('M') == ultimo_mes]
         kpis_base = calcular_kpis(df_base)
 
         col_sim_1, col_sim_2 = st.columns(2)
@@ -647,7 +625,7 @@ if df_raw is not None:
         conv_proj = kpis_base['taxa_conversao'] / 100 * (1 + scale_conv / 100)
         fat_proj = leads_proj * conv_proj * kpis_base['ticket_medio']
 
-        st.markdown(f"### 🎯 Projeção baseada em {ultimo_mes}")
+        st.markdown(f"### 🎯 Projeção baseada em {ultimo_mes.strftime('%b/%y')}")
         exibir_kpis_secundarios({
             "Leads Projetados": f"{leads_proj} (+{leads_proj - kpis_base['leads']})",
             "Conversão Alvo": f"{conv_proj * 100:.1f}%",

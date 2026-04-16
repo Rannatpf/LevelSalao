@@ -6,9 +6,11 @@ Funções de carregamento, limpeza, filtros e cálculos de dados
 import streamlit as st
 import pandas as pd
 import gspread
+import requests
 import json
 import os
 import re
+from datetime import date, datetime
 from pathlib import Path
 from google.oauth2.service_account import Credentials
 
@@ -19,6 +21,8 @@ from .config import (
     CACHE_TTL
 )
 from .logger import logger, LogContext, log_erro, log_info
+
+API_URL = os.getenv("API_URL", "https://sheet-api-6826756112.us-central1.run.app/data")
 
 
 def _streamlit_secrets_exist():
@@ -61,43 +65,114 @@ def _parse_currency_br(value):
 
 
 def _parse_contact_date(value):
-    """Converte datas do tipo 03/11, 21 /11, 1/2, 1911 para Timestamp.
-
-    A linha do tempo começa em novembro/2025; então meses 11 e 12 ficam em 2025
-    e os meses 1-10 ficam em 2026.
-    """
+    """Converte a coluna B para Timestamp sem perder meses da base."""
     if pd.isna(value):
         return pd.NaT
+
+    if isinstance(value, pd.Timestamp):
+        return value.normalize()
+
+    if isinstance(value, datetime):
+        return pd.Timestamp(value).normalize()
+
+    if isinstance(value, date):
+        return pd.Timestamp(value).normalize()
+
+    if isinstance(value, (int, float)) and not pd.isna(value):
+        serial = int(value)
+        if 30000 <= serial <= 60000:
+            return (pd.Timestamp("1899-12-30") + pd.to_timedelta(serial, unit="D")).normalize()
 
     raw = re.sub(r"\s+", "", str(value).strip())
     if not raw:
         return pd.NaT
 
-    day = None
-    month = None
+    match = re.match(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$", raw)
+    if match:
+        first = int(match.group(1))
+        second = int(match.group(2))
+        third = int(match.group(3))
 
-    match = re.match(r"^(\d{1,2})/(\d{1,2})$", raw)
+        if len(match.group(3)) == 4:
+            if first > 12 and second <= 12:
+                day, month, year = first, second, third
+            elif second > 12 and first <= 12:
+                day, month, year = second, first, third
+            else:
+                day, month, year = first, second, third
+        else:
+            year = 2000 + third if third < 100 else third
+            if first > 12 and second <= 12:
+                day, month = first, second
+            elif second > 12 and first <= 12:
+                day, month = second, first
+            else:
+                day, month = first, second
+
+        try:
+            return pd.Timestamp(year=year, month=month, day=day)
+        except ValueError:
+            try:
+                return pd.Timestamp(year=year, month=month, day=1)
+            except Exception:
+                return pd.NaT
+
+    match = re.match(r"^(\d{1,2})[/-](\d{1,2})$", raw)
+    if match:
+        first = int(match.group(1))
+        second = int(match.group(2))
+
+        if first > 12 and second <= 12:
+            day, month = first, second
+        elif second > 12 and first <= 12:
+            day, month = second, first
+        else:
+            day, month = first, second
+
+        if not (1 <= month <= 12):
+            return pd.NaT
+
+        year = 2025 if month >= 11 else 2026
+
+        try:
+            return pd.Timestamp(year=year, month=month, day=day)
+        except ValueError:
+            try:
+                return pd.Timestamp(year=year, month=month, day=1)
+            except Exception:
+                return pd.NaT
+
+    match = re.match(r"^(\d{1,2})(\d{2})$", raw)
     if match:
         day = int(match.group(1))
         month = int(match.group(2))
-    else:
-        match = re.match(r"^(\d{1,2})(\d{2})$", raw)
-        if match:
-            day = int(match.group(1))
-            month = int(match.group(2))
 
-    if day is None or month is None or not (1 <= month <= 12):
-        return pd.NaT
-
-    year = 2025 if month >= 11 else 2026
-
-    try:
-        return pd.Timestamp(year=year, month=month, day=day)
-    except ValueError:
-        try:
-            return pd.Timestamp(year=year, month=month, day=1)
-        except Exception:
+        if not (1 <= month <= 12):
             return pd.NaT
+
+        year = 2025 if month >= 11 else 2026
+
+        try:
+            return pd.Timestamp(year=year, month=month, day=day)
+        except ValueError:
+            try:
+                return pd.Timestamp(year=year, month=month, day=1)
+            except Exception:
+                return pd.NaT
+
+    parsed = pd.to_datetime(raw, errors="coerce", dayfirst=True)
+    if not pd.isna(parsed):
+        return pd.Timestamp(parsed).normalize()
+
+    return pd.NaT
+
+
+# Ordem cronológica dos meses na planilha (nov/2025 em diante)
+_ORDEM_MESES = [
+    "Novembro", "Dezembro",
+    "Janeiro", "Fevereiro", "Março", "Abril",
+    "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro",
+]
 
 
 @st.cache_data(ttl=CACHE_TTL)
@@ -164,20 +239,85 @@ def carregar_dados_mestre():
         
         # ERRO: Nenhuma fonte de credenciais funcionou
         if creds is None:
-            error_msg = (
-                f"❌ Nenhuma fonte de credenciais disponível!\n\n"
-                f"**Diagnóstico:**\n"
-                f"- Streamlit Secrets config: {'✓ Detectado' if streamlit_secrets and 'gcp_service_account' in streamlit_secrets else '✗ Não encontrado'}\n"
-                f"- Env var GOOGLE_SHEETS_CREDENTIALS_JSON: {'✓ Configurado' if GOOGLE_SHEETS_CREDENTIALS_JSON else '✗ Vazio'}\n"
-                f"- Arquivo {GOOGLE_SHEETS_CREDENTIALS_PATH}: {'✓ Existe' if os.path.exists(GOOGLE_SHEETS_CREDENTIALS_PATH) else '✗ Não existe'}\n\n"
-                f"**Solução para Streamlit Cloud:**\n"
-                f"1. Vá para https://share.streamlit.io → seu app → Settings → Secrets\n"
-                f"2. Cole toda a estrutura `[gcp_service_account]` com a chave privada\n"
-                f"3. Clique em Save\n"
-            )
-            log_erro(error_msg)
-            st.error(error_msg)
-            return None
+            log_info("Nenhuma credencial local encontrada. Usando API pública como fallback.")
+
+            try:
+                response = requests.get(API_URL, timeout=60)
+                if response.status_code != 200:
+                    st.error(f"Erro na API: {response.status_code}")
+                    return None
+
+                data = response.json()
+                if isinstance(data, dict) and "erro" in data:
+                    st.error(f"Erro da API: {data['erro']}")
+                    return None
+
+                df = pd.DataFrame(data)
+                df.columns = [str(col).strip() for col in df.columns]
+
+                coluna_data_contato = next((c for c in ['Data de contato', 'Data de Contato', 'Data'] if c in df.columns), None)
+                coluna_data_fat = next((c for c in ['Data do Faturamento', 'Data do faturamento'] if c in df.columns), None)
+
+                if coluna_data_contato:
+                    df['Data_Ref'] = df[coluna_data_contato].apply(_parse_contact_date)
+                else:
+                    df['Data_Ref'] = pd.NaT
+
+                if coluna_data_fat:
+                    df['Data_Fat'] = df[coluna_data_fat].apply(_parse_contact_date)
+
+                df = df.dropna(subset=['Data_Ref'])
+                df = df.sort_values('Data_Ref')
+
+                if 'Faturamento' in df.columns:
+                    df['Faturamento_Num'] = df['Faturamento'].apply(_parse_currency_br)
+                else:
+                    df['Faturamento_Num'] = 0.0
+
+                if 'Status' in df.columns:
+                    status_normalizado = df['Status'].astype(str).str.lower().str.strip()
+                    df['is_faturado'] = status_normalizado.eq('faturado')
+                    df['is_qualificado'] = status_normalizado.isin(['qualificado', 'faturado', 'agendamento realizado', 'em andamento'])
+                else:
+                    df['is_faturado'] = 0
+                    df['is_qualificado'] = 0
+
+                if 'Qualificação' in df.columns:
+                    qualificacao_normalizada = df['Qualificação'].astype(str).str.lower().str.strip()
+                    df['is_qualificado'] = qualificacao_normalizada.eq('qualificado') | df.get('is_qualificado', False)
+
+                df = df[df['Origem'] != 'Mídia Offline'].copy()
+
+                if 'Data_Fat' in df.columns and 'Data_Ref' in df.columns:
+                    try:
+                        df['Dias_Lag'] = (df['Data_Fat'] - df['Data_Ref']).dt.days
+                        df['Dias_Lag'] = df['Dias_Lag'].apply(lambda value: max(0, value) if pd.notna(value) else None)
+                    except Exception:
+                        df['Dias_Lag'] = None
+
+                if df.empty:
+                    base_columns = [
+                        'Data_Ref', 'Faturamento_Num', 'is_faturado', 'is_qualificado', 'Dias_Lag'
+                    ]
+                    for column in base_columns:
+                        if column not in df.columns:
+                            df[column] = pd.Series(dtype='object')
+
+                return df
+
+            except Exception as e:
+                error_msg = (
+                    f"❌ Nenhuma fonte de credenciais disponível e o fallback da API falhou!\n\n"
+                    f"**Diagnóstico:**\n"
+                    f"- Streamlit Secrets config: {'✓ Detectado' if streamlit_secrets and 'gcp_service_account' in streamlit_secrets else '✗ Não encontrado'}\n"
+                    f"- Env var GOOGLE_SHEETS_CREDENTIALS_JSON: {'✓ Configurado' if GOOGLE_SHEETS_CREDENTIALS_JSON else '✗ Vazio'}\n"
+                    f"- Arquivo {GOOGLE_SHEETS_CREDENTIALS_PATH}: {'✓ Existe' if os.path.exists(GOOGLE_SHEETS_CREDENTIALS_PATH) else '✗ Não existe'}\n"
+                    f"- API_URL: {API_URL}\n\n"
+                    f"**Erro do fallback:** {str(e)}"
+                )
+                log_erro(error_msg)
+                st.error(error_msg)
+                return None
         
         try:
             client = gspread.authorize(creds)
@@ -211,18 +351,7 @@ def carregar_dados_mestre():
 
         if df['Data_Ref'].notna().any():
             df = df.dropna(subset=['Data_Ref'])
-            # Label: 'Nov/25', 'Dez/25', 'Jan/26' ...
-            df['Mes_Ano_Label'] = df['Data_Ref'].dt.strftime('%b/%y')
-            df['Periodo_Order'] = df['Data_Ref'].dt.to_period('M')
             df = df.sort_values('Data_Ref')
-        else:
-            df['Mes_Ano_Label'] = 'Sem período'
-            df['Periodo_Order'] = pd.RangeIndex(start=0, stop=len(df), step=1)
-
-        if 'Mes_Ano_Label' not in df.columns:
-            df['Mes_Ano_Label'] = pd.Series(dtype='object')
-        if 'Periodo_Order' not in df.columns:
-            df['Periodo_Order'] = pd.Series(dtype='period[M]')
 
         # Conversão de valores monetários
         if 'Faturamento' in df.columns:
@@ -257,8 +386,7 @@ def carregar_dados_mestre():
 
         if df.empty:
             base_columns = [
-                'Data_Ref', 'Mes_Ano_Label', 'Periodo_Order', 'Faturamento_Num',
-                'is_faturado', 'is_qualificado', 'Dias_Lag'
+                'Data_Ref', 'Faturamento_Num', 'is_faturado', 'is_qualificado', 'Dias_Lag'
             ]
             for column in base_columns:
                 if column not in df.columns:
@@ -309,42 +437,54 @@ def calcular_kpis(df):
     }
 
 
-def criar_filtros(df, periodos_list, chave_unica):
-    """Filtros de período e canal. Default: todos os períodos disponíveis."""
+def criar_filtros(df, chave_unica):
+    """Filtros por mês (coluna Mês da planilha) e canal de aquisição."""
     col_f1, col_f2 = st.columns([1, 2])
 
-    meses_sel = col_f1.multiselect(
-        "Filtrar Período",
-        options=periodos_list,
-        default=periodos_list,
-        key=f"periodo_{chave_unica}",
-    )
+    # Usar coluna "Mês" da planilha diretamente
+    if 'Mês' in df.columns:
+        meses_na_base = df['Mês'].dropna().astype(str).str.strip()
+        meses_na_base = meses_na_base[meses_na_base != ''].unique().tolist()
+        # Ordenar na sequência cronológica da planilha
+        meses_ordenados = [m for m in _ORDEM_MESES if m in meses_na_base]
+        # Caso haja algum mês fora do mapeamento, adicionar no final
+        for m in meses_na_base:
+            if m not in meses_ordenados:
+                meses_ordenados.append(m)
 
-    canais_disponiveis = sorted(df["Origem"].dropna().unique().tolist())
+        meses_sel = col_f1.multiselect(
+            'Meses',
+            options=meses_ordenados,
+            default=meses_ordenados,
+            key=f'meses_{chave_unica}',
+        )
+    else:
+        meses_sel = []
+
+    canais_disponiveis = sorted(df['Origem'].fillna('Desconhecida').unique().tolist())
     canais_sel = col_f2.multiselect(
-        "Canais de Origem",
+        'Canais de Aquisição',
         options=canais_disponiveis,
         default=canais_disponiveis,
-        key=f"canais_{chave_unica}",
+        key=f'canais_{chave_unica}',
     )
 
     return meses_sel, canais_sel
 
 
-def construir_df_filtrado(df_raw, periodos_selecionados, canais_selecionados):
-    """
-    Constrói DataFrame filtrado baseado em período e canais
-    Função auxiliar unificada para evitar repetição
-    
-    Args:
-        df_raw (pd.DataFrame): DataFrame bruto/original
-        periodos_selecionados (list): Períodos escolhidos
-        canais_selecionados (list): Canais escolhidos
-    
-    Returns:
-        pd.DataFrame: DataFrame filtrado
-    """
-    return df_raw[
-        (df_raw['Mes_Ano_Label'].isin(periodos_selecionados)) & 
-        (df_raw['Origem'].isin(canais_selecionados))
-    ]
+def construir_df_filtrado(df_raw, meses_selecionados, canais_selecionados):
+    """Filtra pela coluna Mês da planilha e por canal de aquisição."""
+    if df_raw.empty:
+        return df_raw.iloc[0:0].copy()
+
+    if not meses_selecionados:
+        return df_raw.iloc[0:0].copy()
+
+    # Filtrar pelo nome do mês que vem direto da planilha
+    mes_col = df_raw['Mês'].astype(str).str.strip() if 'Mês' in df_raw.columns else pd.Series(dtype=str)
+    df_filtrado = df_raw[mes_col.isin(meses_selecionados)].copy()
+
+    if canais_selecionados:
+        df_filtrado = df_filtrado[df_filtrado['Origem'].isin(canais_selecionados)].copy()
+
+    return df_filtrado

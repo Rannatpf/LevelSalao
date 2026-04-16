@@ -22,7 +22,7 @@ app.add_middleware(
 # CONFIG (via variáveis de ambiente)
 # ============================================
 SHEET_ID = os.getenv("SHEET_ID", "1YR4uxDsNf-WlODmtUUJDliGETr9LGBqgcTm74YjL-7E")
-RANGE_NAME = os.getenv("RANGE_NAME", "Contatos!A1:K1000")
+RANGE_NAME = os.getenv("RANGE_NAME", "Contatos!A:K")
 
 
 # ============================================
