@@ -9,6 +9,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_a
 from sklearn.model_selection import train_test_split
 import sys
 import re
+import unicodedata
 from pathlib import Path
 
 CSS_PATH = Path(__file__).with_name("styles.css")
@@ -81,27 +82,78 @@ def _parse_currency_br(value):
         return 0.0
 
 
-def _infer_default_year(df):
-    for column in ["Data do Faturamento", "Data de contato"]:
-        if column in df.columns:
-            years = df[column].astype(str).str.extract(r"(\d{4})")[0].dropna()
-            if not years.empty:
-                return int(years.mode().iloc[0])
-    return pd.Timestamp.now().year
+_MESES_PT = {
+    "janeiro": 1,
+    "fevereiro": 2,
+    "marco": 3,
+    "abril": 4,
+    "maio": 5,
+    "junho": 6,
+    "julho": 7,
+    "agosto": 8,
+    "setembro": 9,
+    "outubro": 10,
+    "novembro": 11,
+    "dezembro": 12,
+}
+
+_LABEL_MES = {
+    1: "Jan",
+    2: "Fev",
+    3: "Mar",
+    4: "Abr",
+    5: "Mai",
+    6: "Jun",
+    7: "Jul",
+    8: "Ago",
+    9: "Set",
+    10: "Out",
+    11: "Nov",
+    12: "Dez",
+}
 
 
-def _parse_sheet_date(value, default_year):
-    if pd.isna(value):
+def _normalizar_texto(valor):
+    texto = str(valor).strip().lower() if not pd.isna(valor) else ""
+    if not texto:
+        return ""
+    texto = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"\s+", " ", texto).strip()
+
+
+def _mes_nome_para_num(nome):
+    texto = _normalizar_texto(nome)
+    if not texto:
+        return None
+    return _MESES_PT.get(texto)
+
+
+def _extrair_dia(valor):
+    raw = re.sub(r"\s", "", str(valor).strip())
+    match = re.match(r"^(\d{1,2})/", raw)
+    if match:
+        return int(match.group(1))
+    digits = re.sub(r"\D", "", raw)
+    if digits:
+        return int(digits[:2])
+    return None
+
+
+def _construir_data_por_mes(mes_nome, data_contato_str):
+    mes_num = _mes_nome_para_num(mes_nome)
+    if mes_num is None:
         return pd.NaT
 
-    text = str(value).strip()
-    if not text:
-        return pd.NaT
+    ano = 2025 if mes_num >= 11 else 2026
+    dia = _extrair_dia(data_contato_str) or 1
 
-    if re.search(r"\d{4}", text):
-        return pd.to_datetime(text, dayfirst=True, errors="coerce")
-
-    return pd.to_datetime(f"{text}/{default_year}", dayfirst=True, errors="coerce")
+    try:
+        return pd.Timestamp(year=ano, month=mes_num, day=dia)
+    except ValueError:
+        try:
+            return pd.Timestamp(year=ano, month=mes_num, day=1)
+        except Exception:
+            return pd.NaT
 
 
 def _normalizar_modelo_base(df):
@@ -252,23 +304,51 @@ def carregar_dados_mestre():
         df = pd.DataFrame(data)
         df.columns = [str(col).strip() for col in df.columns]
 
-        default_year = _infer_default_year(df)
+        coluna_mes = next((c for c in ["Mês", "Mes"] if c in df.columns), None)
+        coluna_data_contato = next((c for c in ["Data de contato", "Data de Contato", "Data"] if c in df.columns), None)
 
-        # 🔥 TRANSFORMAÇÕES IGUAIS AO PROJETO ANTIGO
+        # Processamento de datas (Nov/Dez = 2025, outros = 2026)
         if not df.empty:
-            if "Data de contato" in df.columns:
-                df["Data_Ref"] = df["Data de contato"].apply(lambda value: _parse_sheet_date(value, default_year))
-            elif "Data" in df.columns:
-                df["Data_Ref"] = pd.to_datetime(df["Data"], errors="coerce")
+            if coluna_mes and coluna_data_contato:
+                df["Data_Ref"] = df.apply(
+                    lambda row: _construir_data_por_mes(row[coluna_mes], row[coluna_data_contato]),
+                    axis=1,
+                )
+            elif coluna_mes:
+                df["Data_Ref"] = df[coluna_mes].apply(lambda m: _construir_data_por_mes(m, "1"))
+            elif coluna_data_contato:
+                df["Data_Ref"] = pd.to_datetime(df[coluna_data_contato], format="%d/%m", errors="coerce")
+
+                def ajustar_ano(dt):
+                    if pd.isnull(dt):
+                        return dt
+                    return dt.replace(year=2025) if dt.month >= 11 else dt.replace(year=2026)
+
+                df["Data_Ref"] = df["Data_Ref"].apply(ajustar_ano)
             else:
                 df["Data_Ref"] = pd.NaT
 
-            if "Data do Faturamento" in df.columns:
-                df["Data_Fat"] = df["Data do Faturamento"].apply(lambda value: _parse_sheet_date(value, default_year))
+            if coluna_mes and "Data do Faturamento" in df.columns:
+                df["Data_Fat"] = df.apply(
+                    lambda row: _construir_data_por_mes(row[coluna_mes], row["Data do Faturamento"]),
+                    axis=1,
+                )
+            elif "Data do Faturamento" in df.columns:
+                df["Data_Fat"] = pd.to_datetime(df["Data do Faturamento"], format="%d/%m", errors="coerce")
+
+                def ajustar_ano_fat(dt):
+                    if pd.isnull(dt):
+                        return dt
+                    return dt.replace(year=2025) if dt.month >= 11 else dt.replace(year=2026)
+
+                df["Data_Fat"] = df["Data_Fat"].apply(ajustar_ano_fat)
+
+            df = df.dropna(subset=["Data_Ref"])
 
             if "Data_Ref" in df.columns and df["Data_Ref"].notna().any():
-                df["Mes_Ano_Label"] = df["Data_Ref"].dt.strftime("%b/%Y")
+                df["Mes_Ano_Label"] = df["Data_Ref"].apply(lambda d: f"{_LABEL_MES[d.month]}/{str(d.year)[2:]}")
                 df["Periodo_Order"] = df["Data_Ref"].dt.to_period("M")
+                df = df.sort_values("Data_Ref")
             elif "Mês" in df.columns:
                 df["Mes_Ano_Label"] = df["Mês"].astype(str).str.strip()
                 df["Periodo_Order"] = pd.RangeIndex(start=0, stop=len(df), step=1)
