@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 
 CSS_PATH = Path(__file__).with_name("styles.css")
-LOGO_FILE = "level-logo_azul-marinho_com-letra.webp"
+LOGO_FILE = "level-logo_azul-marinho_com-letra.png"
 
 
 def aplicar_css_premium():
