@@ -5,6 +5,7 @@ Módulos de processamento de dados, análises e visualizações
 
 from .data_processing import (
     formatar_moeda_br,
+    formatar_periodo,
     carregar_dados_mestre,
     calcular_kpis,
     criar_filtros,
@@ -48,6 +49,7 @@ from .ui_components import (
 __all__ = [
     # Data Processing
     'formatar_moeda_br',
+    'formatar_periodo',
     'carregar_dados_mestre',
     'calcular_kpis',
     'criar_filtros',

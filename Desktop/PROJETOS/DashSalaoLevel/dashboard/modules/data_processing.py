@@ -126,10 +126,13 @@ def _parse_contact_date(value):
         if not (1 <= month <= 12 and 1 <= day <= 31):
             return pd.NaT
 
-        year = 2025 if month >= 11 else 2026
-
+        # Assume o ano corrente; se a data cair no futuro, é do ano anterior
+        hoje = pd.Timestamp.today().normalize()
         try:
-            return pd.Timestamp(year=year, month=month, day=day)
+            ts = pd.Timestamp(year=hoje.year, month=month, day=day)
+            if ts > hoje:
+                ts = pd.Timestamp(year=hoje.year - 1, month=month, day=day)
+            return ts
         except ValueError:
             return pd.NaT
 
@@ -175,6 +178,44 @@ def _normalizar_mes(valor):
         return valor
     chave = str(valor).strip().lower()
     return _NORMALIZE_MES.get(chave, str(valor).strip().title())
+
+
+_NOMES_MESES_PT = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+]
+
+
+def formatar_periodo(periodo):
+    """Converte um pd.Period mensal em rótulo 'Novembro/2025'."""
+    if pd.isna(periodo):
+        return None
+    return f"{_NOMES_MESES_PT[periodo.month - 1]}/{periodo.year}"
+
+
+def _adicionar_periodo(df):
+    """
+    Cria colunas de mês+ano a partir da Data_Ref (data de contato):
+      - 'Periodo': pd.Period mensal (para ordenar cronologicamente)
+      - 'Mes_Ano': rótulo 'Novembro/2025' (usado no filtro e nos gráficos)
+    Assim, meses iguais de anos diferentes não se misturam.
+    """
+    if 'Data_Ref' in df.columns and not df.empty:
+        datas = pd.to_datetime(df['Data_Ref'], errors='coerce')
+        df['Periodo'] = datas.dt.to_period('M')
+        df['Mes_Ano'] = df['Periodo'].apply(formatar_periodo)
+    else:
+        df['Periodo'] = pd.Series(dtype='period[M]')
+        df['Mes_Ano'] = pd.Series(dtype='object')
+    return df
+
+
+def periodos_ordenados(df):
+    """Lista de rótulos 'Mês/Ano' presentes no df, em ordem cronológica."""
+    if 'Periodo' not in df.columns:
+        return []
+    periodos = sorted(df['Periodo'].dropna().unique())
+    return [formatar_periodo(p) for p in periodos]
 
 
 # URL CSV direto do Google Sheets (fallback sem credenciais)
@@ -291,6 +332,7 @@ def carregar_dados_mestre():
 
                 df = df.dropna(subset=['Data_Ref'])
                 df = df.sort_values('Data_Ref')
+                df = _adicionar_periodo(df)
 
                 if 'Faturamento' in df.columns:
                     df['Faturamento_Num'] = df['Faturamento'].apply(_parse_currency_br)
@@ -387,6 +429,7 @@ def carregar_dados_mestre():
         if df['Data_Ref'].notna().any():
             df = df.dropna(subset=['Data_Ref'])
             df = df.sort_values('Data_Ref')
+        df = _adicionar_periodo(df)
 
         # Conversão de valores monetários
         if 'Faturamento' in df.columns:
@@ -476,23 +519,14 @@ def criar_filtros(df, chave_unica):
     """Filtros por mês e canal de aquisição."""
     col_f1, col_f2 = st.columns(2)
 
-    # --- Filtro de Mês ---
-    if 'Mês' in df.columns:
-        meses_na_base = df['Mês'].dropna().astype(str).str.strip()
-        meses_na_base = meses_na_base[meses_na_base != ''].unique().tolist()
-        meses_ordenados = [m for m in _ORDEM_MESES if m in meses_na_base]
-        for m in meses_na_base:
-            if m not in meses_ordenados:
-                meses_ordenados.append(m)
-
-        meses_sel = col_f1.multiselect(
-            'Meses',
-            options=meses_ordenados,
-            default=meses_ordenados,
-            key=f'meses_{chave_unica}',
-        )
-    else:
-        meses_sel = []
+    # --- Filtro de Mês/Ano (derivado da data de contato) ---
+    meses_ordenados = periodos_ordenados(df)
+    meses_sel = col_f1.multiselect(
+        'Meses',
+        options=meses_ordenados,
+        default=meses_ordenados,
+        key=f'meses_{chave_unica}',
+    )
 
     # --- Filtro de Canal ---
     canais_disponiveis = sorted(df['Origem'].fillna('Desconhecida').unique().tolist())
@@ -514,9 +548,10 @@ def construir_df_filtrado(df_raw, meses_selecionados, canais_selecionados):
     if not meses_selecionados:
         return df_raw.iloc[0:0].copy()
 
-    # Filtrar pelo nome do mês
-    mes_col = df_raw['Mês'].astype(str).str.strip() if 'Mês' in df_raw.columns else pd.Series(dtype=str)
-    df_filtrado = df_raw[mes_col.isin(meses_selecionados)].copy()
+    # Filtrar por Mês/Ano (ex.: 'Novembro/2025' ≠ 'Novembro/2026')
+    if 'Mes_Ano' not in df_raw.columns:
+        return df_raw.iloc[0:0].copy()
+    df_filtrado = df_raw[df_raw['Mes_Ano'].isin(meses_selecionados)].copy()
 
     if canais_selecionados:
         df_filtrado = df_filtrado[df_filtrado['Origem'].isin(canais_selecionados)].copy()

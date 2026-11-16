@@ -199,6 +199,7 @@ def gerar_insights_ia(df):
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
 from modules import (
     formatar_moeda_br,
+    formatar_periodo,
     carregar_dados_mestre as carregar_dados_mestre_mod,
     calcular_kpis,
     criar_filtros,
@@ -324,21 +325,21 @@ if df_raw is not None:
 
                 # --- Evolução mensal por canal ---
                 st.subheader("📈 Evolução Mensal por Canal")
-                _ORDEM_MESES = [
-                    "Novembro", "Dezembro", "Janeiro", "Fevereiro",
-                    "Março", "Abril", "Maio", "Junho",
-                    "Julho", "Agosto", "Setembro", "Outubro",
-                ]
-                evo = df_perf.groupby(['Mês', 'Origem']).agg(
+                evo = df_perf.groupby(['Periodo', 'Origem']).agg(
                     Leads=('Nome', 'count'),
                     Faturados=('is_faturado', 'sum'),
                     Faturamento=('Faturamento_Num', 'sum'),
                 ).reset_index()
                 evo['Taxa_Conv'] = (evo['Faturados'] / evo['Leads'] * 100).round(1)
                 evo['Receita_por_Lead'] = (evo['Faturamento'] / evo['Leads']).round(2)
-                meses_presentes = [m for m in _ORDEM_MESES if m in evo['Mês'].values]
-                evo['Mês'] = pd.Categorical(evo['Mês'], categories=meses_presentes, ordered=True)
-                evo = evo.sort_values('Mês')
+                # Ordena cronologicamente (mês + ano) e usa rótulo 'Novembro/2025'
+                evo = evo.sort_values('Periodo')
+                meses_presentes = [formatar_periodo(p) for p in sorted(evo['Periodo'].unique())]
+                evo['Mês'] = pd.Categorical(
+                    evo['Periodo'].apply(formatar_periodo),
+                    categories=meses_presentes, ordered=True,
+                )
+                evo = evo.drop(columns=['Periodo'])
 
                 col_evo1, col_evo2 = st.columns(2)
                 with col_evo1:
@@ -467,7 +468,7 @@ if df_raw is not None:
         conv_proj = kpis_base['taxa_conversao'] / 100 * (1 + scale_conv / 100)
         fat_proj = leads_proj * conv_proj * kpis_base['ticket_medio']
 
-        st.markdown(f"### 🎯 Projeção baseada em {ultimo_mes.strftime('%b/%y')}")
+        st.markdown(f"### 🎯 Projeção baseada em {formatar_periodo(ultimo_mes)}")
         exibir_kpis_secundarios({
             "Leads Projetados": f"{leads_proj} (+{leads_proj - kpis_base['leads']})",
             "Conversão Alvo": f"{conv_proj * 100:.1f}%",
