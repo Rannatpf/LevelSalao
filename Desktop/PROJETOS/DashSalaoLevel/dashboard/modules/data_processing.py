@@ -147,13 +147,6 @@ def _parse_contact_date(value):
     return pd.NaT
 
 
-# Ordem cronológica dos meses na planilha (nov/2025 em diante)
-_ORDEM_MESES = [
-    "Novembro", "Dezembro",
-    "Janeiro", "Fevereiro", "Março", "Abril",
-    "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro",
-]
-
 # Mapa de normalização: variantes encontradas na planilha → nome canônico
 _NORMALIZE_MES = {
     "novembro": "Novembro",
@@ -208,14 +201,6 @@ def _adicionar_periodo(df):
         df['Periodo'] = pd.Series(dtype='period[M]')
         df['Mes_Ano'] = pd.Series(dtype='object')
     return df
-
-
-def periodos_ordenados(df):
-    """Lista de rótulos 'Mês/Ano' presentes no df, em ordem cronológica."""
-    if 'Periodo' not in df.columns:
-        return []
-    periodos = sorted(df['Periodo'].dropna().unique())
-    return [formatar_periodo(p) for p in periodos]
 
 
 # URL CSV direto do Google Sheets (fallback sem credenciais)
@@ -515,45 +500,179 @@ def calcular_kpis(df):
     }
 
 
-def criar_filtros(df, chave_unica):
-    """Filtros por mês e canal de aquisição."""
-    col_f1, col_f2 = st.columns(2)
+# ============================================
+# FILTRO GLOBAL DE PERÍODO E CANAL
+# ============================================
+_MESES_PRESET = {
+    "Últimos 3 meses": 3,
+    "Últimos 6 meses": 6,
+    "Últimos 12 meses": 12,
+}
 
-    # --- Filtro de Mês/Ano (derivado da data de contato) ---
-    meses_ordenados = periodos_ordenados(df)
-    meses_sel = col_f1.multiselect(
-        'Meses',
-        options=meses_ordenados,
-        default=meses_ordenados,
-        key=f'meses_{chave_unica}',
-    )
+PRESETS_PERIODO = [
+    "Este mês", "Mês passado",
+    *_MESES_PRESET.keys(),
+    "Este ano", "Tudo", "Personalizado",
+]
+PRESET_PADRAO = "Tudo"
 
-    # --- Filtro de Canal ---
-    canais_disponiveis = sorted(df['Origem'].fillna('Desconhecida').unique().tolist())
-    canais_sel = col_f2.multiselect(
-        'Canais de Aquisição',
-        options=canais_disponiveis,
-        default=canais_disponiveis,
-        key=f'canais_{chave_unica}',
-    )
-
-    return meses_sel, canais_sel
+# Quantos meses voltar para montar o período de comparação de cada preset
+_MESES_COMPARACAO = {
+    "Este mês": 1, "Mês passado": 1,
+    **_MESES_PRESET,
+    "Este ano": 12,
+}
 
 
-def construir_df_filtrado(df_raw, meses_selecionados, canais_selecionados):
-    """Filtra por mês e canal de aquisição."""
-    if df_raw.empty:
+def formatar_data_br(data):
+    """Timestamp/date -> 'dd/mm/aaaa'."""
+    return pd.Timestamp(data).strftime("%d/%m/%Y")
+
+
+def calcular_intervalo(preset, data_min, data_max, hoje=None):
+    """
+    Converte um preset de período em (inicio, fim), ambos inclusivos.
+    'Últimos N meses' = mês atual + N-1 meses cheios anteriores.
+    """
+    hoje = pd.Timestamp(hoje if hoje is not None else pd.Timestamp.today()).normalize()
+    inicio_mes = hoje.replace(day=1)
+
+    if preset == "Este mês":
+        return inicio_mes, hoje
+    if preset == "Mês passado":
+        return inicio_mes - pd.DateOffset(months=1), inicio_mes - pd.Timedelta(days=1)
+    if preset in _MESES_PRESET:
+        return inicio_mes - pd.DateOffset(months=_MESES_PRESET[preset] - 1), hoje
+    if preset == "Este ano":
+        return hoje.replace(month=1, day=1), hoje
+    # "Tudo" (e fallback)
+    return pd.Timestamp(data_min).normalize(), pd.Timestamp(data_max).normalize()
+
+
+def calcular_periodo_anterior(preset, inicio, fim):
+    """
+    Período equivalente anterior, para comparação nos KPIs.
+    Presets mensais voltam N meses (ex.: 01-16/nov -> 01-16/out);
+    intervalos personalizados usam a mesma quantidade de dias imediatamente antes.
+    """
+    meses = _MESES_COMPARACAO.get(preset)
+    if meses:
+        return inicio - pd.DateOffset(months=meses), fim - pd.DateOffset(months=meses)
+    dias = (fim - inicio).days + 1
+    return inicio - pd.Timedelta(days=dias), inicio - pd.Timedelta(days=1)
+
+
+def _seletor_preset():
+    """Botões de período rápido (segmented control; radio em versões antigas do Streamlit)."""
+    if hasattr(st, "segmented_control"):
+        escolha = st.segmented_control(
+            "Período",
+            options=PRESETS_PERIODO,
+            selection_mode="single",
+            default=PRESET_PADRAO,
+            key="filtro_periodo",
+        )
+    else:
+        escolha = st.radio(
+            "Período",
+            PRESETS_PERIODO,
+            index=PRESETS_PERIODO.index(PRESET_PADRAO),
+            horizontal=True,
+            key="filtro_periodo",
+        )
+    # Clicar de novo no botão selecionado o desmarca -> volta ao padrão
+    return escolha or PRESET_PADRAO
+
+
+def criar_filtro_global(df):
+    """
+    Filtro único (vale para todas as abas): período + canais de aquisição.
+
+    Returns:
+        dict com inicio, fim, canais, comparar, inicio_ant, fim_ant
+    """
+    datas = pd.to_datetime(df["Data_Ref"], errors="coerce").dropna()
+    data_min, data_max = datas.min().normalize(), datas.max().normalize()
+    hoje = pd.Timestamp.today().normalize()
+
+    with st.container(border=True):
+        preset = _seletor_preset()
+
+        col_datas, col_canais = st.columns([2, 3])
+
+        with col_datas:
+            if preset == "Personalizado":
+                padrao = (max(data_min, data_max - pd.Timedelta(days=29)).date(), data_max.date())
+                intervalo = st.date_input(
+                    "Intervalo de datas",
+                    value=padrao,
+                    min_value=data_min.date(),
+                    max_value=max(data_max, hoje).date(),
+                    format="DD/MM/YYYY",
+                    key="filtro_datas",
+                )
+                # Enquanto o usuário escolhe a 2ª data, o retorno tem só 1 item
+                if isinstance(intervalo, (list, tuple)):
+                    if len(intervalo) == 2:
+                        inicio, fim = intervalo
+                    elif len(intervalo) == 1:
+                        inicio = fim = intervalo[0]
+                    else:
+                        inicio, fim = padrao
+                else:
+                    inicio = fim = intervalo
+                inicio, fim = pd.Timestamp(inicio), pd.Timestamp(fim)
+            else:
+                inicio, fim = calcular_intervalo(preset, data_min, data_max, hoje)
+
+        canais_disponiveis = sorted(df["Origem"].fillna("Desconhecida").unique().tolist())
+        canais = col_canais.multiselect(
+            "Canais de aquisição",
+            options=canais_disponiveis,
+            default=[],
+            placeholder="Todos os canais",
+            key="filtro_canais",
+        )
+
+        comparar = preset != "Tudo"
+        inicio_ant = fim_ant = None
+        sem_historico = False
+        if comparar:
+            inicio_ant, fim_ant = calcular_periodo_anterior(preset, inicio, fim)
+            # Só compara se a base cobre o período anterior inteiro
+            # (evita deltas enganosos, ex.: comparar 2026 com um 2025 quase vazio)
+            if inicio_ant < data_min:
+                comparar, sem_historico = False, True
+
+        resumo = f"📅 **{formatar_data_br(inicio)} a {formatar_data_br(fim)}**"
+        if comparar:
+            resumo += (
+                f" · variação dos indicadores em relação a "
+                f"{formatar_data_br(inicio_ant)} a {formatar_data_br(fim_ant)}"
+            )
+        elif sem_historico:
+            resumo += " · sem histórico suficiente para comparar com o período anterior"
+        st.caption(resumo)
+
+    return {
+        "inicio": inicio,
+        "fim": fim,
+        "canais": canais,
+        "comparar": comparar,
+        "inicio_ant": inicio_ant,
+        "fim_ant": fim_ant,
+    }
+
+
+def construir_df_filtrado(df_raw, inicio, fim, canais_selecionados=None):
+    """Filtra por intervalo de datas (inclusivo) e canais. Canais vazio = todos."""
+    if df_raw.empty or inicio is None or fim is None:
         return df_raw.iloc[0:0].copy()
 
-    if not meses_selecionados:
-        return df_raw.iloc[0:0].copy()
-
-    # Filtrar por Mês/Ano (ex.: 'Novembro/2025' ≠ 'Novembro/2026')
-    if 'Mes_Ano' not in df_raw.columns:
-        return df_raw.iloc[0:0].copy()
-    df_filtrado = df_raw[df_raw['Mes_Ano'].isin(meses_selecionados)].copy()
+    datas = pd.to_datetime(df_raw["Data_Ref"], errors="coerce")
+    mascara = datas.between(pd.Timestamp(inicio), pd.Timestamp(fim))
 
     if canais_selecionados:
-        df_filtrado = df_filtrado[df_filtrado['Origem'].isin(canais_selecionados)].copy()
+        mascara &= df_raw["Origem"].fillna("Desconhecida").isin(canais_selecionados)
 
-    return df_filtrado
+    return df_raw[mascara].copy()

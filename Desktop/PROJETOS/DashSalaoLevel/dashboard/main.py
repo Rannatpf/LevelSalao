@@ -202,7 +202,7 @@ from modules import (
     formatar_periodo,
     carregar_dados_mestre as carregar_dados_mestre_mod,
     calcular_kpis,
-    criar_filtros,
+    criar_filtro_global,
     construir_df_filtrado,
     analisar_performance_canais,
     analisar_servico,
@@ -241,6 +241,18 @@ if df_raw is not None:
         logo_path=logo_path
     )
 
+    # Filtro único de período + canais (vale para as abas de análise)
+    filtro = criar_filtro_global(df_raw)
+    df_filtrado = construir_df_filtrado(df_raw, filtro['inicio'], filtro['fim'], filtro['canais'])
+
+    kpis_ant = None
+    if filtro['comparar']:
+        df_anterior = construir_df_filtrado(
+            df_raw, filtro['inicio_ant'], filtro['fim_ant'], filtro['canais']
+        )
+        if not df_anterior.empty:
+            kpis_ant = calcular_kpis(df_anterior)
+
     tab_real, tab_perf, tab_servico, tab_proj = st.tabs([
         "📊 Histórico Real",
         "🎯 Performance Canais",
@@ -252,11 +264,8 @@ if df_raw is not None:
     # ABA 1: DADOS REAIS
     # ==========================================
     with tab_real:
-        meses_real, canais_sel = criar_filtros(df_raw, "real")
-        df_filtrado = construir_df_filtrado(df_raw, meses_real, canais_sel)
-
         kpis_atu = calcular_kpis(df_filtrado)
-        exibir_kpis_principais(kpis_atu, None)
+        exibir_kpis_principais(kpis_atu, kpis_ant)
         st.divider()
 
         if not df_filtrado.empty:
@@ -285,8 +294,7 @@ if df_raw is not None:
     # ABA 2: PERFORMANCE POR CANAL
     # ==========================================
     with tab_perf:
-        meses_perf, canais_perf = criar_filtros(df_raw, "perf")
-        df_perf = construir_df_filtrado(df_raw, meses_perf, canais_perf)
+        df_perf = df_filtrado
 
         if not df_perf.empty:
             kpis_perf = calcular_kpis(df_perf)
@@ -397,8 +405,7 @@ if df_raw is not None:
     # ABA 3: ANÁLISE DE SERVIÇOS
     # ==========================================
     with tab_servico:
-        meses_serv, canais_serv = criar_filtros(df_raw, "serv")
-        df_serv_filt = construir_df_filtrado(df_raw, meses_serv, canais_serv)
+        df_serv_filt = df_filtrado
 
         servico_stats = analisar_servico(df_serv_filt)
         if servico_stats is not None:

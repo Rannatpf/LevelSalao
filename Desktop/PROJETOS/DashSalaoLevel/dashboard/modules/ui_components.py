@@ -17,17 +17,20 @@ def exibir_kpis_principais(kpis_atu, kpis_ant=None):
     """
     k1, k2, k3, k4 = st.columns(4)
     
-    delta_leads = f"+{kpis_atu['leads'] - kpis_ant['leads']}" if kpis_ant else None
-    k1.metric("Leads", kpis_atu['leads'], delta=delta_leads)
-    
-    delta_qualif = f"{kpis_atu['taxa_qualif'] - kpis_ant['taxa_qualif']:.1f}%" if kpis_ant else None
-    k2.metric("Qualificação", f"{kpis_atu['taxa_qualif']:.1f}%", delta=delta_qualif)
-    
-    delta_conv = f"{kpis_atu['taxa_conversao'] - kpis_ant['taxa_conversao']:.1f}%" if kpis_ant else None
-    k3.metric("Conversão", f"{kpis_atu['taxa_conversao']:.1f}%", delta=delta_conv)
-    
-    delta_fat = formatar_moeda_br(kpis_atu['faturamento_total'] - kpis_ant['faturamento_total']) if kpis_ant else None
-    k4.metric("Faturamento", formatar_moeda_br(kpis_atu['faturamento_total']), delta=delta_fat)
+    # O sinal precisa vir no início do texto para o Streamlit colorir (verde/vermelho)
+    delta_leads = delta_qualif = delta_conv = delta_fat = None
+    if kpis_ant:
+        delta_leads = f"{int(kpis_atu['leads'] - kpis_ant['leads']):+d}"
+        delta_qualif = f"{kpis_atu['taxa_qualif'] - kpis_ant['taxa_qualif']:+.1f} p.p."
+        delta_conv = f"{kpis_atu['taxa_conversao'] - kpis_ant['taxa_conversao']:+.1f} p.p."
+        diff_fat = kpis_atu['faturamento_total'] - kpis_ant['faturamento_total']
+        delta_fat = f"{'-' if diff_fat < 0 else '+'}{formatar_moeda_br(abs(diff_fat))}"
+
+    ajuda = "Variação em relação ao período anterior equivalente" if kpis_ant else None
+    k1.metric("Leads", kpis_atu['leads'], delta=delta_leads, help=ajuda)
+    k2.metric("Qualificação", f"{kpis_atu['taxa_qualif']:.1f}%", delta=delta_qualif, help=ajuda)
+    k3.metric("Conversão", f"{kpis_atu['taxa_conversao']:.1f}%", delta=delta_conv, help=ajuda)
+    k4.metric("Faturamento", formatar_moeda_br(kpis_atu['faturamento_total']), delta=delta_fat, help=ajuda)
 
 
 def exibir_kpis_secundarios(kpis_dict):

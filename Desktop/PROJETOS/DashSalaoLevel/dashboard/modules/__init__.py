@@ -8,7 +8,7 @@ from .data_processing import (
     formatar_periodo,
     carregar_dados_mestre,
     calcular_kpis,
-    criar_filtros,
+    criar_filtro_global,
     construir_df_filtrado
 )
 
@@ -52,7 +52,7 @@ __all__ = [
     'formatar_periodo',
     'carregar_dados_mestre',
     'calcular_kpis',
-    'criar_filtros',
+    'criar_filtro_global',
     'construir_df_filtrado',
     
     # Analytics
